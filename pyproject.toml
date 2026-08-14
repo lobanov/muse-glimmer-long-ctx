@@ -1,0 +1,27 @@
+[project]
+name = "muse-glimmer-long-ctx"
+version = "0.1.0"
+description = "Muse Glimmer 30B 512k context adaptation — training and evaluation environment"
+requires-python = ">=3.12"
+dependencies = [
+    # Versioning model for this project:
+    #   - torch is NEVER installed from PyPI — it comes from the NGC base image (GB10/Blackwell
+    #     builds + bundled flash-attn). The Dockerfile installs with `--no-install-package torch`.
+    #   - Versions here are BOUNDED RANGES, not exact pins: the NGC container tag is the anchor
+    #     for reproducibility (it pins torch, accelerate, peft, etc. as a coherent set), and these
+    #     ranges guarantee minimum validated capabilities while letting NGC's bundled versions win.
+    #     If NGC ships something older than a floor, uv upgrades just that package.
+    #   - Floors below are the exact set validated together on NGC 25.10 (torch 2.9.0a0+nv25.10,
+    #     python 3.12, linux/aarch64) and re-validated on NGC 26.07 (torch 2.13.0a0+nv26.7).
+    "transformers>=5.15,<6",  # 5.15.0 = exact release that added Muse Glimmer
+    "accelerate>=1.14",
+    "peft>=0.19.1",
+    "trl>=1.10",
+    "bitsandbytes>=0.50.1",   # native linux/aarch64 wheel (verified on GB10)
+    "datasets>=5.0",
+    "pyarrow>=25",
+]
+
+# flash-attn is preinstalled in the NGC base image — never pip-install over it.
+# huggingface-hub >= 1.x uses Xet; fast transfers enabled via HF_XET_HIGH_PERFORMANCE=1
+# (set in .devcontainer/Dockerfile). hf-transfer is deprecated — do not add it.

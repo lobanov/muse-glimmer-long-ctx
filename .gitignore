@@ -1,0 +1,25 @@
+# dev environment artifacts
+.devcontainer/.env
+cache/
+logs/
+*.log
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+
+# experiment outputs
+outputs/
+runs/
+wandb/
+checkpoints/
+adapters/
+
+# large binaries never belong in git
+*.gguf
+*.safetensors
+*.bin

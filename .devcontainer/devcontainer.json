@@ -1,0 +1,30 @@
+// Dev container for the Muse Glimmer 30B long-context adaptation project.
+// Compose-based so the vLLM sidecar and llama.cpp engine share GPU passthrough
+// config and model caches with the dev container. See CONTRIBUTING.md.
+{
+  "name": "muse-glimmer-long-ctx",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspaces/muse-glimmer-long-ctx",
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "eamodio.gitlens",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.terminal.activateEnvironment": false,
+        "ruff.path": ["/usr/local/bin/uv", "tool", "run", "ruff"]
+      }
+    }
+  },
+  "postCreateCommand": "bash scripts/verify-env.sh",
+  "remoteUser": "root"
+}

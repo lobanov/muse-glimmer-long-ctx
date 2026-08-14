@@ -1,0 +1,103 @@
+# GPU passthrough without a configured nvidia runtime (verified on DGX Spark):
+# devices are world-writable and the driver libs are bind-mounted read-only.
+# Values come from .devcontainer/.env — generate it with: scripts/detect-host-gpu.sh
+# If your host DOES have the nvidia container runtime configured (`docker info | grep nvidia`),
+# you may instead use `gpus: all` and drop the lib mounts — see CONTRIBUTING.md.
+#
+# NOTE: YAML cannot splice lists into lists, so the 5 driver-lib mounts are repeated per
+# service. That is deliberate — passthrough stays explicit and grep-able.
+
+name: muse-glimmer-long-ctx
+
+x-gpu-devices: &gpu-devices
+  - /dev/nvidia0
+  - /dev/nvidiactl
+  - /dev/nvidia-uvm
+
+services:
+  # ---- main development container (VS Code / Cursor / JetBrains attach here) ----
+  dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        NGC_TAG: ${NGC_TAG:-26.07-py3}
+    image: muse-glimmer-dev:${NGC_TAG:-26.07-py3}
+    devices: *gpu-devices
+    volumes:
+      - ..:/workspaces/muse-glimmer-long-ctx
+      - ${CACHE_DIR:-../cache}/huggingface:/cache/huggingface
+      - ${CACHE_DIR:-../cache}/torch:/cache/torch
+      - ${CACHE_DIR:-../cache}/triton:/cache/triton
+      - ${CACHE_DIR:-../cache}/weights:/cache/weights
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libcuda.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libcuda.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ml.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ml.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ptxjitcompiler.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ptxjitcompiler.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-nvvm.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-nvvm.so.4:ro
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+    working_dir: /workspaces/muse-glimmer-long-ctx
+    command: sleep infinity
+    ipc: host # torch dataloaders / shared memory
+    environment:
+      - HF_HOME=/cache/huggingface
+      - HF_TOKEN=${HF_TOKEN:-}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+  # ---- vLLM research-inference sidecar (multimodal Glimmer serving) ----
+  # Image is multi-arch (arm64 + amd64) — manifest verified; recipe from PLAN.md §1.
+  # Start: docker compose --profile inference up -d vllm   (then :8000/v1)
+  vllm:
+    profiles: ["inference"]
+    image: vllm/vllm-openai:muse-glimmer
+    devices: *gpu-devices
+    volumes:
+      - ${CACHE_DIR:-../cache}/huggingface:/cache/huggingface
+      - ${CACHE_DIR:-../cache}/weights:/cache/weights
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libcuda.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libcuda.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ml.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ml.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ptxjitcompiler.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ptxjitcompiler.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-nvvm.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-nvvm.so.4:ro
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+    command: >
+      --model meta-models/Muse-Glimmer-30B
+      --served-model-name muse-glimmer
+      --tensor-parallel-size 1
+      --max-model-len 131072
+      --enable-auto-tool-choice --tool-call-parser muse_glimmer
+      --reasoning-parser muse_glimmer
+      --generation-config auto
+      --gpu-memory-utilization 0.90
+    ports:
+      - "8000:8000"
+    ipc: host
+    environment:
+      - HF_HOME=/cache/huggingface
+      - HF_TOKEN=${HF_TOKEN:-}
+      # vLLM image (unlike NGC) has no LD_LIBRARY_PATH covering the multiarch dir;
+      # triton's libcuda_dirs() requires libcuda.so.1 discoverable there (verified fix)
+      - LD_LIBRARY_PATH=/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu
+
+  # ---- llama.cpp deployment engine (pinned release, CUDA 12.8 toolchain, sm_120+sm_121) ----
+  # Ad-hoc server:
+  #   docker compose --profile llamacpp run --service-ports llamacpp \
+  #     llama-server -m /cache/weights/Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf \
+  #       --mmproj /cache/weights/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf \
+  #       -ngl 99 -c 524288 --jinja --temp 1.0 --top-p 0.95 --top-k 64
+  llamacpp:
+    profiles: ["llamacpp"]
+    build:
+      context: .
+      dockerfile: llamacpp.Dockerfile
+      args:
+        LLAMA_TAG: ${LLAMA_TAG:-b10428}
+        CUDA_ARCHES: ${CUDA_ARCHES:-120;121}
+    image: muse-glimmer-llamacpp:${LLAMA_TAG:-b10428}
+    devices: *gpu-devices
+    volumes:
+      - ${CACHE_DIR:-../cache}/weights:/cache/weights
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libcuda.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libcuda.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ml.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ml.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ptxjitcompiler.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ptxjitcompiler.so.1:ro
+      - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-nvvm.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-nvvm.so.4:ro
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+    entrypoint: [""]
