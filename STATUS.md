@@ -42,4 +42,5 @@ Last updated: 2026-08-15.
   §4 arms + metadata spike; §6 sampler; §7 skeleton; overnight/suite/stage3 queues armed.
 - 2026-08-15: §5 unblocked (pi headless teacher, selftest PASS); GitHub-direct repo
   assembly validated (license/exclusion/determinism/bucketing); Stack-v2 correction
-  recorded; STATUS.md instituted per owner request.
+  recorded; STATUS.md instituted per owner request; synth long-doc generator validated
+  (pi-written verified sections → grounded var/agg training samples, 30% corpus component).
