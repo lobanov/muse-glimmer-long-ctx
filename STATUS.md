@@ -36,6 +36,19 @@ Last updated: 2026-08-15.
 - Review: 3 synthetic tasks (conflicts/set_intersect/chronology) joined after the ≤128k
   grid started — fill-in grid queued (suite queue step E).
 
+## Next-session runbook (check in order)
+
+1. `bash scripts/collect_results.sh` → `docs/results-snapshot.md` (safe any time; auto-covers whatever finished)
+2. `for f in logs/*queue*.log; do echo "== $f"; tail -3 $f; done` — chain position + any ERROR/WARN lines
+3. Markers: `ls logs/*.done logs/*.launched` — stage order: overnight → suite → stage3 → stage4 → stage5 (dry-run) → stage6 (train1) → stage7 (§8) → stage8 (§11 export) → stage9 (quant parity)
+4. If `logs/train1.launched`: `tail -20 logs/train-run1.log` (loss every 10 steps)
+5. When §3 grids complete: write `docs/phase3-stock-baseline.md` from the snapshot (retention + decision rule ≥ 85%) — the first real report
+6. When §4 arms complete: `evals/harness/compare.py` verdict already in snapshot; update `docs/phase4-zeroshot-arms.md` with results
+7. If stage8 BLOCKED (≤128k regression): decide fallback per PLAN §7/§10 (bf16_lora arm is pre-staged) — do NOT blindly rerun
+8. §9 after §8: `bash scripts/ablate.sh location` then `rank`; §10: `evals/harness/diagnose.py` output is in the snapshot
+9. §12 when RTX 5090 arrives: `docs/phase12-deployment-config.md` checklist (step 1 includes re-verifying llama-server flag spellings)
+10. Completion only when every `docs/deliverables.md` row is ✅ with fresh evidence
+
 ## Session log (condensed)
 
 - 2026-08-14: §0 gates closed + docs; §1 pins; §2 harness core + smoke; §3 grids launched;
@@ -65,3 +78,7 @@ Last updated: 2026-08-15.
   bf16→Q4_K_M-with-imatrix on a runtime-loadable BF16 fixture — real run uses fresh
   convert output (well-formed) + first-class Glimmer arch; stage8 fails observably and
   is idempotent if it still trips.
+- 2026-08-15 (cont.4): chain hardening — client non-streaming fallback on 4xx (mock-server
+  validated; insurance for first-ever streaming call vs llama-server), stage6 exits with
+  blocked marker on dry-run FAILED (was infinite wait); CONTRIBUTING §5 gotchas recorded;
+  next-session runbook added.
