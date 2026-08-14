@@ -131,6 +131,7 @@ Glimmer applies RMSNorm to every Q/K head and then multiplies queries by `qk_sca
 
 - Sweep `qk_scale_factor` ≈ 3.87 → 4.1 / 4.3 / 4.6 / 5.0 (≈ 1.05–1.3× logit sharpening) on the 13 global layers.
 - Also verify early (§0 spike): does `convert_hf_to_gguf.py` carry `qk_scale_factor` and `layer_rope_theta` into GGUF metadata, so config-only changes survive the deployment path?
+  - **Answered (2026-08-14, `scripts/gguf_inspect.py` + `llama.cpp/src/models/muse-glimmer.cpp`): NO.** The GGUF carries no `qk_scale_factor` metadata — the converter *synthesizes `attn_q_norm` weights that absorb qk_scale_factor* (k_norm = identity). Config-only qk sweeps work on the HF/vLLM path (config.json); the GGUF path requires re-convert + re-quant per value (done once for the winner in §11). A *learnable* scale remains exportable if written back into `attn_q_norm` at merge time (it is a plain weight tensor). RoPE: single global `rope.freq_base=500000`; llama.cpp reads per-layer freq via `get_rope_freq_base(cparams, il)` and applies rope to SWA layers only — YaRN via cparams touches only SWA layers, as intended.
 - If per-layer values are supported, prefer tuning only global layers (local SWA layers never see > 2048 relative distance).
 
 ### (b) YaRN-4 — kept as a control, expected near-inert
@@ -156,6 +157,12 @@ Target mixture:
 | Short-context replay | 10% |
 
 ### Teacher: GLM-5.2
+
+**Status (2026-08-14): BLOCKED** — no Z.ai API key in `.devcontainer/.env` (only `HF_TOKEN`).
+Escalated to the project owner; corpus generation cannot start without it. §6 was pulled
+forward (GPU-free) in the meantime; §7 trainer skeleton can be written but not exercised
+at scale without §5 data (short-context replay + The Stack v2 slices are viable interim
+sources if the key stays unavailable — decide with the owner).
 
 - `zai-org/GLM-5.2` — 753B MoE (~40B active), **MIT license**, 1M-token context, 131k output, trained specifically for long-horizon coding-agent scenarios. Ideal teacher for this corpus.
 - Too large to self-host on the Spark (~380 GB even at 4-bit) → generate via **Z.ai API** (GLM-5.2 API priced same as GLM-5.1). Design for API throughput: batched templates, full caching of prompts/completions, seeds and params logged.
@@ -216,6 +223,11 @@ Support:
 **Scope note (architecture-specific):** for Glimmer, modes 2–5 train the local RoPE layers' absolute-position robustness only; the 13 global NoPE layers have no position IDs, and the SWA layers rarely attend beyond 2,048 relative distance. Expect virtual-position training to be close to inert for this model; genuine long sequences (mode 6) carry nearly all of the signal. Keep the modes implemented for ablation completeness, but do not budget majority training time to them (see §7 mixture, revised below).
 
 This component remains independent from the trainer.
+
+**Status (2026-08-14): implemented + selftested** — `src/muse_longctx/position_sampler.py`
+(all 6 modes, layout/sample dataclasses, selftest asserts monotonicity/tail-hit/non-overlap).
+Built early (before §5) because it is GPU-free and §5 is blocked on Z.ai API credentials.
+Training-data generation (§5) feeds `build_training_sample()` once it exists.
 
 ---
 
