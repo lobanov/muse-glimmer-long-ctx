@@ -102,6 +102,8 @@ Rules of the road:
 - Experiment scripts → `scripts/` (infra) or future `src/`/`evals/` per PLAN.md; results →
   Parquet under a host-visible output dir (PLAN.md §2 schema).
 - Background jobs always get a named log in `logs/`; reference the log path in any summary.
-- When measurements are taken, append them to CONTRIBUTING.md §7 so they accumulate.
+- Measurements split by kind: environment numbers (builds, downloads, cold starts, serving
+  smoke) → CONTRIBUTING.md §7; experiment results (benchmarks, gate outcomes, parity) →
+  the relevant PLAN.md section; raw data → `outputs/` (host-visible).
 - If something breaks in a way §rules here don't cover: check CONTRIBUTING.md §6
   (troubleshooting) before inventing a workaround, and record new gotchas in both files.

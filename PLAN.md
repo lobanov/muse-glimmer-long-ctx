@@ -40,6 +40,9 @@ Before any benchmark or training run:
 **Go/no-go gates** (numeric, decided before Phase 3):
 - Stock GGUF at 128k within ~2 points of BF16 on the parity set → quant artifact acceptable as baseline.
 - If measured components (weights + KV + compute buffers) sum to > ~31 GB for F16-KV 512k → fall back to Q8_0 KV (upstream llama.cpp, zero forks) and treat turbo3 as upside.
+- **Memory gate: PASSED (analytically, from GB10-measured components).** Device totals: 16.9/18.6/20.4/**22.1 GB** at 128k/256k/384k/512k F16 KV; 19.4 GB at 512k Q8_0. F16@512k leaves ~9 GB margin on a 32 GB 5090. Bonus: 1M F16 projects to ~30 GB (borderline); 1M Q8_0 ~23 GB (comfortable). Tools: `scripts/measure_kv_memory.sh`, `scripts/summarize_memory.py`.
+- **iSWA gate: PASSED.** SWA layers get a window-sized cache (2,560 cells / 97.5 MiB F16), non-SWA 13 layers scale with context at exactly 1,024 B/token (F16) — matches the theoretical 13,312 B/token per token across K+V.
+- **Parity gate: PASSED (with a caveat).** NIAH parity set (3 ctx x 3 depths x 3 reps, greedy): BF16/vLLM **27/27**, K-Quant/llama.cpp **26/27**. The single miss (128k, 90% depth) is *not* a retrieval failure — the quantized model exhausted the 1,024-token budget inside its reasoning channel (`finish_reason: length`, empty content) where BF16 answered in few tokens. Action for the eval harness (§2): pin `reasoning_strength: low` + generous `max_tokens`, and score `content` only; re-run this cell class under those settings in the harness phase. Raw data: `outputs/parity_spike/*.jsonl`.
 
 **Deferred (awaits RTX 5090 hardware):** on-device 32 GB fit validation; on-device throughput/latency qualification (prefill/decode at 128k–512k); TurboQuant sm_120 fork validation on-target. These move to §12 when the GPU arrives; Spark measurements above stand in until then.
 

@@ -164,6 +164,9 @@ Each of these was verified the hard way; the file that encodes the fix is listed
 
 ## 7. Reference measurements (DGX Spark, 2026-08-14)
 
+Environment numbers only (builds, downloads, serving behavior). Experiment results —
+benchmarks, §-gate outcomes, parity scores — live in `PLAN.md`; raw data in `outputs/`.
+
 | Item | Value |
 |---|---|
 | dev image build (after ~30 min NGC pull) | ~3 min |
