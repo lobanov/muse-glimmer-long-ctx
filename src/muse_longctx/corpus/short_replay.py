@@ -20,6 +20,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pi_teacher as PT  # noqa: E402
 
+TOPICS = ["web service", "data pipeline", "CLI tool", "embedded firmware", "game loop",
+          "compiler pass", "database index", "cache layer", "auth flow", "file parser",
+          "concurrent worker pool", "rate limiter", "retry logic", "config loading",
+          "logging setup", "timezone handling", "unicode text", "binary protocol",
+          "image resize", "audio buffer", "network proxy", "scheduler", "unit test",
+          "type checker", "regex engine", "template renderer", "session store",
+          "message queue", "crash recovery", "metrics export", "feature flag",
+          "schema migration"]
+
 CATS = [
     ("python-bugfix", "a 6-14-line Python function with ONE subtle bug, then the corrected "
      "function, then one sentence naming the bug"),
@@ -37,9 +46,10 @@ CATS = [
 ]
 
 PROMPT = (
-    "Produce a self-contained {cat} item. Requirements: realistic, technically correct, "
-    "no headings, no markdown fences, plain text. End with a line 'ANSWER: <the key "
-    "answer or fixed code>'. Keep the whole item under 160 words. Output only the item."
+    "Produce a self-contained {cat} item about a {topic}. Requirements: realistic, "
+    "technically correct, no headings, no markdown fences, plain text. End with a line "
+    "'ANSWER: <the key answer or fixed code>'. Keep the whole item under 160 words. "
+    "Output only the item."
 )
 
 
@@ -69,7 +79,9 @@ def main():
         if len(items) >= args.n:
             break
         cat, desc = CATS[rng.randrange(len(CATS))]
-        text = PT.generate("shortreplay-v1", PROMPT.format(cat=desc), thinking="low")
+        topic = rng.choice(TOPICS)
+        text = PT.generate("shortreplay-v2", PROMPT.format(cat=desc, topic=topic),
+                           thinking="low")
         if not text:
             continue
         parsed = parse_item(text)
