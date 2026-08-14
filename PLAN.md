@@ -12,27 +12,36 @@
 
 ## 0. Compatibility & Memory Spike (new, do first)
 
+> **RTX 5090 status: not yet available.** All §0 work runs on the DGX Spark as a **close
+> approximation**: component memory sizes (weights, KV cache, compute buffers) are
+> hardware-independent and transfer directly to the 5090 (same CUDA backend, same
+> sm_120/121 family, same GGUF); the 32 GB fit is then decided **analytically** from measured
+> components. Throughput does *not* transfer (5090 has ~6× GB10 memory bandwidth) — treat
+> all Spark speed numbers as lower bounds. Deferred items are listed at the end of §0.
+
 Before any benchmark or training run:
 
 1. **Engine bring-up**
    - transformers ≥ 5.15 (model requires `transformers_version: 5.15.0.dev0`); pin exact version.
-   - llama.cpp build ≥ **10353** (Meta's requirement for the official GGUFs); build with CUDA 12.8+ for sm_120 (RTX 5090). Note: CUDA 13.1 has a known MMQ segfault in TurboQuant forks — standardize on 12.8/12.9.
+   - llama.cpp build ≥ **10353** (Meta's requirement for the official GGUFs); CUDA **12.9+** toolchain — 12.8 lacks sm_121 (verified: `nvcc fatal: compute_121`), and 13.1 has a known MMQ segfault in TurboQuant forks.
    - vLLM with `--model-impl transformers --tool-call-parser muse_glimmer --reasoning-parser muse_glimmer`.
 2. **Parity check**: stock BF16 (HF) vs official `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` on a RULER subset at 32k–128k. This is the quant-noise floor for all later comparisons.
 3. **iSWA verification**: load the GGUF at 128k and confirm in llama.cpp logs that the 39 sliding-window layers get a *window-sized* SWA cache, not full-context cache (`--swa-full` must NOT be set). Expected fixed SWA cost ≈ 82 MB.
-4. **KV memory model** (measured, not just computed): global-layer KV is 13,312 B/token at F16:
+4. **KV memory model — measured on the Spark, decided analytically for 32 GB**: global-layer KV is 13,312 B/token at F16 (theory):
    | Context | F16 KV | Q8_0 KV | turbo3 (~4.9×) |
    |---|---:|---:|---:|
    | 128k | 1.75 GB | 0.9 GB | ~0.36 GB |
    | 256k | 3.5 GB | 1.75 GB | ~0.7 GB |
    | 512k | 7.0 GB | 3.5 GB | ~1.4 GB |
    | 1M | 14 GB | 7 GB | ~2.9 GB |
-   With ~17 GB weights, **F16 KV at 512k fits a 32 GB RTX 5090** (~25–27 GB total incl. buffers). Record actual totals.
-5. **TurboQuant fork build** (optional but pre-staged): `Madreag/turbo3-cuda` is validated on RTX 5090 (sm_120, FA required, turbo3 only). Also available: `TheTom/llama-cpp-turboquant` (turbo3+turbo4). Verify a build boots and passes a NIAH smoke test. Watch for the Blackwell CMake gotcha: stale `GGML_CUDA_FORCE_CUBLAS=ON` in the cache costs ~50% decode — always configure from a clean build dir.
+   Measure actual per-component sizes with llama.cpp buffer reports on the GB10 (`CUDA0 model buffer`, `CUDA0 KV buffer`, `CUDA0 compute buffer`) at `-c` = 128k/256k/384k/512k, F16 and Q8_0 KV. The 5090 fit is then: `weights + KV + compute buffers ≤ ~31 GB` (usable VRAM minus ≥1 GB margin; `CUDA_Host` buffers are pinned host RAM, not VRAM). Record measured totals in CONTRIBUTING.md §7.
+5. **TurboQuant fork build** (optional, pre-staged, can also be approximated on the Spark): `Madreag/turbo3-cuda` is validated on RTX 5090 (sm_120, FA required, turbo3 only); GB10 is sm_121 — same Blackwell family, valid for correctness/memory approximation, not for performance. Also available: `TheTom/llama-cpp-turboquant` (turbo3+turbo4). Watch for the Blackwell CMake gotcha: stale `GGML_CUDA_FORCE_CUBLAS=ON` in the cache costs ~50% decode — always configure from a clean build dir.
 
 **Go/no-go gates** (numeric, decided before Phase 3):
-- Stock GGUF at 128k within ~2 points of BF16 on the RULER subset → quant artifact acceptable as baseline.
-- If F16-KV 512k total VRAM > 30 GB on the 5090 → fall back to Q8_0 KV (upstream llama.cpp, zero forks) and treat turbo3 as upside.
+- Stock GGUF at 128k within ~2 points of BF16 on the parity set → quant artifact acceptable as baseline.
+- If measured components (weights + KV + compute buffers) sum to > ~31 GB for F16-KV 512k → fall back to Q8_0 KV (upstream llama.cpp, zero forks) and treat turbo3 as upside.
+
+**Deferred (awaits RTX 5090 hardware):** on-device 32 GB fit validation; on-device throughput/latency qualification (prefill/decode at 128k–512k); TurboQuant sm_120 fork validation on-target. These move to §12 when the GPU arrives; Spark measurements above stand in until then.
 
 ---
 
