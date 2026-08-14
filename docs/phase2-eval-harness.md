@@ -64,5 +64,13 @@ word-shuffled haystacks (10 books, ≈1.9M tokens — covers 512k targets), offi
 token-fill calibrated against the Glimmer tokenizer (cached, `outputs/eval/nolima_calib.json`,
 verified 89.8–89.9% fill at 32k/256k). Canonical lengths 250–32K; ours additionally supports
 64k–512k as a labelled extension. License: Adobe Research (non-commercial research), eval-only.
-RULER / LongBench v2 / ∞Bench / HELMET / LongCodeBench / LongSWE integration: pending (dataset
-downloads + licence checks; NoLiMa pinned first as the semantic-retrieval axis).
+RULER / ∞Bench / HELMET / LongSWE integration: pending (dataset downloads + licence checks;
+sequenced after the §3 baseline identifies which axes synthetic tasks fail to discriminate).
+
+**LongBench v2: integrated** (`evals/harness/longbench_v2.py`, plugin via `--plugin
+longbench_v2`). 503 official MC instances (contexts 10k–4.3M Glimmer tokens, median 97k —
+measured & cached), official "answer with the option's letter directly" protocol, first
+standalone-letter scoring. Instance selection filters to [0.5, 0.92] × target (usable pools:
+79 @ 32k, 104 @ 128k, 90 @ 256k, 44 @ 512k; none below 32k — by dataset design). `depth` is
+ignored per-instance (fixed by the original task) and recorded in meta. License: CC-BY-NC,
+research/eval-only.
