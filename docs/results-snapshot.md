@@ -1,4 +1,4 @@
-# Results snapshot — 2026-08-14 23:47:20
+# Results snapshot — 2026-08-15 00:52:33
 
 Data files present:
 - `outputs/eval/parity_caveat_vllm.jsonl` (3 rows)
@@ -8,13 +8,15 @@ Data files present:
 - `outputs/eval/plugin_smoke_longcodeqa.jsonl` (1 rows)
 - `outputs/eval/plugin_smoke_nolima.jsonl` (1 rows)
 - `outputs/eval/smoke_vllm.jsonl` (4 rows)
-- `outputs/eval/stock_vllm_le128k.jsonl` (178 rows)
+- `outputs/eval/stock_vllm_le128k.jsonl` (219 rows)
 
 ## §3 stock baseline — score by task × ctx (mean ± 95% CI (n))
 ```
 | config     engine    task            ctx |  score  ±95%   n | ttft med wall med finish-length |
 -------------------------------------------------------------------------------------------------
-| stock      vllm      multihop     128000  |  1.000 0.000  10 |    118.5    120.3             0 |
+| stock      vllm      counting      64000  |  0.667 0.384   9 |    105.3    105.6             0 |
+| stock      vllm      counting      32000  |  0.952 0.093  21 |     82.5     82.7             0 |
+| stock      vllm      multihop     128000  |  1.000 0.000  21 |    118.4    120.2             0 |
 | stock      vllm      multihop      64000  |  1.000 0.000  21 |     62.1     63.9             0 |
 | stock      vllm      multihop      32000  |  1.000 0.000  21 |     41.6     43.2             0 |
 | stock      vllm      niah         128000  |  1.000 0.000  21 |     78.1     80.1             0 |
@@ -27,21 +29,26 @@ Data files present:
 ## §3 retention vs 128k + decision rule
 ```
 # Retention analysis — stock (stock)
-rows: 178; reference ctx = 128000
+rows: 219; reference ctx = 128000
 
 ## stock
 | task           |         32000 |         64000 |        128000 |
 |---|---|---|---|
-| multihop       | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (10) |
+| counting       |  95.2± 9.3 (21) |  66.7±32.7 (9) |             — |
+| multihop       | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (21) |
 | niah           | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (21) |
 | niah_multi     | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (21) |
 
 | retention      |         32000 |         64000 |        128000 |
 |---|---|---|---|
+| counting       |          nan% |          nan% |          nan% |
 | multihop       |        100.0% |        100.0% |        100.0% |
 | niah           |        100.0% |        100.0% |        100.0% |
 | niah_multi     |        100.0% |        100.0% |        100.0% |
 
+```
+## counting error anatomy (off-by-one undercount = attention dilution)
+```
 ```
 ## §5 corpus manifest (train_v1)
 ```json

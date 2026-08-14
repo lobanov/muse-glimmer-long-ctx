@@ -57,6 +57,45 @@ if [ -n "$ARM_FILES" ]; then
   echo '```'
 fi
 
+# ---- counting error anatomy (most sensitive degradation metric) ------------------
+CNT_FILES=$(ls $E/stock_vllm_*.jsonl $E/run1_vllm*.jsonl $E/abl_*.jsonl 2>/dev/null | tr '\n' ' ')
+if [ -n "$CNT_FILES" ]; then
+  echo "## counting error anatomy (off-by-one undercount = attention dilution)"
+  echo '```'
+  docker exec "$DEV" python3 - $(for f in $CNT_FILES; do echo "/workspaces/muse-glimmer-long-ctx/$f"; done) <<'PY'
+import json, re, sys
+from collections import Counter, defaultdict
+pat = re.compile(r"got (\d+) want (\d+)")
+stats = defaultdict(Counter)
+for path in sys.argv[1:]:
+    try:
+        fh = open(path)
+    except FileNotFoundError:
+        continue
+    for line in fh:
+        try: r = json.loads(line)
+        except Exception: continue
+        if r.get("error") or r["task"] != "counting": continue
+        lab, ctx = r["config_label"], r["target_ctx"]
+        if r["score"] == 1.0:
+            stats[(lab, ctx)]["exact"] += 1
+        else:
+            m = pat.search(r.get("detail") or "")
+            if not m:
+                stats[(lab, ctx)]["other"] += 1
+            else:
+                got, want = int(m.group(1)), int(m.group(2))
+                d = got - want
+                stats[(lab, ctx)]["under1" if d == -1 else
+                       ("underN" if d < -1 else "over")] += 1
+for (lab, ctx), c in sorted(stats.items(), key=lambda kv: (kv[0][0], kv[0][1])):
+    tot = sum(c.values())
+    print(f"{lab:<22} ctx={ctx:>7}: exact={c['exact']:>3}/{tot} "
+          f"under-1={c['under1']} under-N={c['underN']} over={c['over']} other={c['other']}")
+PY
+  echo '```'
+fi
+
 # ---- trained model (§8: run1 + ablations) ---------------------------------------
 RUN_FILES=$(ls $E/run1_vllm*.jsonl $E/abl_*.jsonl 2>/dev/null | tr '\n' ' ')
 if [ -n "$RUN_FILES" ]; then
