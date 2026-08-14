@@ -48,4 +48,7 @@ Last updated: 2026-08-15.
   agent-trajectory generator validated (pi as genuine agent with tools via --mode json,
   repo-unique fact ground truth, code-tree materialization); natural-docs + short-replay
   + repo-doc samples + corpus mixer validated (train_v1 manifest: target-vs-actual
-  weights, dedupe, genuine-only lengths noted); §5 pipeline complete, scale-up = runtime.
+  weights, dedupe, genuine-only lengths noted); §5 pipeline complete; batch_generate
+  driver launched detached (24 repos · 8 synth docs · 6 book slices · 3 agent sessions ·
+  short items → serialize → remix); exclusion gate rejecting eval repos in production
+  (jinja/httpx correctly skipped).

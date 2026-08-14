@@ -154,6 +154,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--validate", action="store_true")
     ap.add_argument("--doc-tokens", type=int)
+    ap.add_argument("--seed", type=int, default=2026_0815,
+                    help="master seed; per-doc seed derives from it + out path")
     ap.add_argument("--out")
     ap.add_argument("--concurrency", type=int, default=4)
     args = ap.parse_args()
@@ -170,9 +172,10 @@ if __name__ == "__main__":
         print("synth_docs validation OK (sections verified, answers grounded)")
     else:
         assert args.doc_tokens and args.out
-        body, ledger = document(random.Random(hash(args.out) & 0xffff), args.doc_tokens,
+        rng_master = random.Random(args.seed)
+        body, ledger = document(random.Random(rng_master.random() * 1e9), args.doc_tokens,
                                 args.concurrency)
-        samples = training_samples(body, ledger, rng, max_samples=8)
+        samples = training_samples(body, ledger, rng_master, max_samples=8)
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
         with open(args.out, "w") as f:
             f.write(json.dumps({"body": body, "ledger": ledger,
