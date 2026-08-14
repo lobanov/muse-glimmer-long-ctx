@@ -1,34 +1,44 @@
-# Results snapshot — 2026-08-14 22:04:49
+# Results snapshot — 2026-08-14 23:47:20
 
 Data files present:
 - `outputs/eval/parity_caveat_vllm.jsonl` (3 rows)
+- `outputs/eval/plugin_smoke_agentmem.jsonl` (1 rows)
+- `outputs/eval/plugin_smoke_infbench.jsonl` (1 rows)
+- `outputs/eval/plugin_smoke_longbench_v2.jsonl` (1 rows)
+- `outputs/eval/plugin_smoke_longcodeqa.jsonl` (1 rows)
+- `outputs/eval/plugin_smoke_nolima.jsonl` (1 rows)
 - `outputs/eval/smoke_vllm.jsonl` (4 rows)
-- `outputs/eval/stock_vllm_le128k.jsonl` (107 rows)
+- `outputs/eval/stock_vllm_le128k.jsonl` (178 rows)
 
 ## §3 stock baseline — score by task × ctx (mean ± 95% CI (n))
 ```
 | config     engine    task            ctx |  score  ±95%   n | ttft med wall med finish-length |
 -------------------------------------------------------------------------------------------------
+| stock      vllm      multihop     128000  |  1.000 0.000  10 |    118.5    120.3             0 |
+| stock      vllm      multihop      64000  |  1.000 0.000  21 |     62.1     63.9             0 |
+| stock      vllm      multihop      32000  |  1.000 0.000  21 |     41.6     43.2             0 |
 | stock      vllm      niah         128000  |  1.000 0.000  21 |     78.1     80.1             0 |
 | stock      vllm      niah          64000  |  1.000 0.000  21 |     41.0     43.0             0 |
 | stock      vllm      niah          32000  |  1.000 0.000  21 |     28.4     30.3             0 |
-| stock      vllm      niah_multi   128000  |  1.000 0.000   2 |    145.7    154.1             0 |
+| stock      vllm      niah_multi   128000  |  1.000 0.000  21 |    143.0    150.5             0 |
 | stock      vllm      niah_multi    64000  |  1.000 0.000  21 |     84.2     92.0             0 |
 | stock      vllm      niah_multi    32000  |  1.000 0.000  21 |     60.6     67.4             0 |
 ```
 ## §3 retention vs 128k + decision rule
 ```
 # Retention analysis — stock (stock)
-rows: 107; reference ctx = 128000
+rows: 178; reference ctx = 128000
 
 ## stock
 | task           |         32000 |         64000 |        128000 |
 |---|---|---|---|
+| multihop       | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (10) |
 | niah           | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (21) |
-| niah_multi     | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (2) |
+| niah_multi     | 100.0± 0.0 (21) | 100.0± 0.0 (21) | 100.0± 0.0 (21) |
 
 | retention      |         32000 |         64000 |        128000 |
 |---|---|---|---|
+| multihop       |        100.0% |        100.0% |        100.0% |
 | niah           |        100.0% |        100.0% |        100.0% |
 | niah_multi     |        100.0% |        100.0% |        100.0% |
 
@@ -38,43 +48,43 @@ rows: 107; reference ctx = 128000
 {
  "name": "train_v1",
  "seed": 2026,
- "rows": 5,
- "tokens": 231194,
+ "rows": 173,
+ "tokens": 31519133,
  "components": {
   "repos": {
-   "n": 1,
-   "avail": 1,
-   "tokens": 186292,
+   "n": 60,
+   "avail": 60,
+   "tokens": 23787124,
    "target": 0.35,
-   "actual": 0.2
+   "actual": 0.3468
   },
   "synth": {
-   "n": 1,
-   "avail": 1,
-   "tokens": 10219,
+   "n": 59,
+   "avail": 72,
+   "tokens": 4171238,
    "target": 0.3,
-   "actual": 0.2
+   "actual": 0.341
   },
   "natural": {
-   "n": 1,
-   "avail": 1,
-   "tokens": 31957,
+   "n": 28,
+   "avail": 28,
+   "tokens": 3532747,
    "target": 0.15,
-   "actual": 0.2
+   "actual": 0.1618
   },
   "agent": {
-   "n": 1,
-   "avail": 1,
-   "tokens": 2461,
+   "n": 6,
+   "avail": 6,
+   "tokens": 22470,
    "target": 0.1,
-   "actual": 0.2
+   "actual": 0.0347
   },
   "short": {
-   "n": 1,
-   "avail": 6,
-   "tokens": 265,
+   "n": 20,
+   "avail": 32,
+   "tokens": 5554,
    "target": 0.1,
-   "actual": 0.2
+   "actual": 0.1156
   }
  },
  "length_note": "genuine-only so far; virtual-position rows enter via the position sampler at \u00a79 ablation time"

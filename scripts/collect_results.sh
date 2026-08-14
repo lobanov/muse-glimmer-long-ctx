@@ -57,24 +57,41 @@ if [ -n "$ARM_FILES" ]; then
   echo '```'
 fi
 
-# ---- PPL probe ------------------------------------------------------------------
-if [ -f "$E/ppl_stock.jsonl" ]; then
-  echo "## PPL curve (stock-524k, last-8k-token span)"
+# ---- trained model (§8: run1 + ablations) ---------------------------------------
+RUN_FILES=$(ls $E/run1_vllm*.jsonl $E/abl_*.jsonl 2>/dev/null | tr '\n' ' ')
+if [ -n "$RUN_FILES" ]; then
+  echo "## §8 trained vs stock (Δ pts; * = beyond CI and >3pts)"
   echo '```'
-  docker exec "$DEV" python3 - "$E/ppl_stock.jsonl" <<'PY'
+  docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+    python3 evals/harness/compare.py $RUN_FILES $STOCK_FILES --ref stock \
+    --tasks niah,semantic,multihop,abstain" 2>/dev/null
+  echo '```'
+  echo "## §10 failure-mode diagnostics (run1 vs stock)"
+  echo '```'
+  docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+    python3 evals/harness/diagnose.py $STOCK_FILES $RUN_FILES --label run1" 2>/dev/null
+  echo '```'
+fi
+
+# ---- PPL probes ------------------------------------------------------------------
+for ppl in $E/ppl_*.jsonl; do
+  [ -f "$ppl" ] || continue
+  echo "## PPL curve — $(basename "$ppl" .jsonl) (last-8k-token span)"
+  echo '```'
+  docker exec "$DEV" python3 - "$ppl" <<'PY'
 import json, sys
 rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
-rows.sort(key=lambda r: (r["config"], r["target_ctx"], r["rep"]))
+rows.sort(key=lambda r: (r.get("config", ""), r.get("target_ctx", 0), r.get("rep", 0)))
 for r in rows:
     if r.get("error"):
-        print(f'{r["config"]:<12} {r["target_ctx"]:>7} rep{r["rep"]}: ERROR {r["error"][:60]}')
+        print(f'{r.get("config", "?"):<12} {r.get("target_ctx", 0):>7} rep{r.get("rep", 0)}: ERROR {r["error"][:60]}')
     else:
         print(f'{r["config"]:<12} {r["target_ctx"]:>7} rep{r["rep"]}: '
               f'ppl={r["ppl"]:.4f} over n={r["n_eval"]} (prompt {r["prompt_tokens"]:,}) '
               f'[{r["wall_s"]}s]')
 PY
   echo '```'
-fi
+done
 
 # ---- corpus manifest -------------------------------------------------------------
 if [ -f outputs/corpus/train_v1/manifest.json ]; then
