@@ -20,8 +20,7 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 ## Queued automation
 
 GPU chain: overnight (§3 grids + caveat) → suite (community suites) → stage3 (agentmem +
-PPL) → stage4 (§4 arm sweep: qk4.3/qk5.0/qk4.1/qk4.6/yarn4 × niah/semantic @ 128k–512k) →
-stage5 (dev refresh + verify-env, GPU freed, §7 dry-run → training-ready) → stage6
-(§7 run1 launch: gates on dry-run OK + corpus ≥100 rows/≥5M tokens; §4 winner →
---config-override, else stock knobs).
+PPL) → stage4 (§4 arm sweep) → stage5 (dev refresh + §7 dry-run) → stage6 (§7 run1
+launch, gated) → stage7 (merge + §8 eval + regression subset + PPL) → stage8 (§11 export
+chain w/ regression guard GO/BLOCK → Q4_K_M artifact).
 Host-side: corpus batch (§5 scale-up) running concurrently.
