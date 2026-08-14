@@ -13,7 +13,7 @@ Last updated: 2026-08-15.
 | §2 eval harness | ✅ core + NoLiMa + LongBench v2 + LongCodeQA + ∞Bench + custom agentmem; RULER-official/HELMET/LongSWE deferred by design | `docs/phase2-eval-harness.md` |
 | §3 stock baseline | 🔄 running — ≤128k grid 64+/378 cells (0 errors, perfect so far); >128k + suites queued overnight | `logs/eval-*.log`, `outputs/eval/` |
 | §4 zero-shot arms | 🔧 arms built & validated (qk 4.1/4.3/4.6/5.0, yarn4, stock-524k); GGUF-metadata spike answered; runs queued behind §3 | `docs/phase4-zeroshot-arms.md`, `outputs/arms/` |
-| §5 training corpus | ✅ teacher OPERATIONAL — pi headless (GLM-5.2) per owner directive; driver selftest PASS; GitHub-direct repo assembly validated | `docs/phase5-corpus-plan.md`, `src/muse_longctx/corpus/` |
+| §5 training corpus | ✅ all generators validated end-to-end (pi-headless teacher; GitHub-direct repos 35%, synthetic docs 30%, agent trajectories 10%); natural-docs 15% + short-replay 10% + batch mixer next | `docs/phase5-corpus-plan.md`, `src/muse_longctx/corpus/` |
 | §6 position sampler | ✅ complete + selftested | `docs/phase6-position-sampler.md` |
 | §7 QLoRA trainer | 🔧 skeleton complete; `--dry-run` awaits free GPU | `docs/phase7-qlora-trainer.md` |
 | §8–§14 | ⏸ sequenced after §3/§4/§5–§7 (eval, ablations, merge/export, 5090 qualification, deliverables) | PLAN.md |
@@ -43,4 +43,7 @@ Last updated: 2026-08-15.
 - 2026-08-15: §5 unblocked (pi headless teacher, selftest PASS); GitHub-direct repo
   assembly validated (license/exclusion/determinism/bucketing); Stack-v2 correction
   recorded; STATUS.md instituted per owner request; synth long-doc generator validated
-  (pi-written verified sections → grounded var/agg training samples, 30% corpus component).
+  (pi-written verified sections → grounded var/agg training samples, 30% corpus component);
+  serialize bridge validated (chat-template-faithful, loss-on-answer, genuine positions);
+  agent-trajectory generator validated (pi as genuine agent with tools via --mode json,
+  repo-unique fact ground truth, code-tree materialization).
