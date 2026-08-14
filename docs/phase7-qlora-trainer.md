@@ -26,10 +26,22 @@ on Z.ai key) and a free GPU for `--dry-run`.** Validated so far: py_compile, cla
 Custom Accelerate loop (no TRL/Axolotl/etc. — PLAN §1 framework restraint). Gradient
 checkpointing + `enable_input_require_grads`. Adapter-only save.
 
-## Blockers / next steps
+## First-run configuration (PLAN §7 / §14.4 — decided)
 
-1. §5 corpus (Z.ai API key) — escalated; interim options (The Stack v2 slice + short
-   replay) flagged to the owner in PLAN §5 status note.
-2. `--dry-run` on GPU (needs vLLM sidecar down or a memory window — queued behind §3).
-3. First real run config per plan: r16–32, attention-only, 55–70% genuine 96–256k,
-   10–20% genuine 32–64k, 10–15% virtual-position ablation, 10–20% short replay.
+```bash
+# arm-config bridge: train under the §4-winning qk value (or stock knobs)
+docker exec muse-glimmer-long-ctx-dev-1 python3 src/muse_longctx/train_qlora.py \
+  --data outputs/corpus/train_v1/train.jsonl \
+  --out outputs/adapters/run1 --mode qlora \
+  --lora-rank 32 --lora-scope all --lr 1e-4 \
+  --micro-batch 1 --grad-accum 8 --seq-bucket 131072 \
+  --config-override '{"qk_scale_factor": <winner or omit>}'
+```
+
+- QLoRA first (NF4 + double-quant, BF16 compute); `bf16_lora` fallback arm if lift over
+  zero-shot is weak (PLAN §7 pre-staged fallback; Spark 128 GB accommodates ~80 GB).
+- `--lora-scope all` for run 1; §9 ablation then runs `global` (prior: ≈ all ≫ local).
+- Corpus: `train_v1` manifest governs the genuine-length mixture; virtual-position rows
+  enter only at §9 via re-serialization with sampler modes 2–5.
+- Pre-flight: `--dry-run` (one fwd/bwd @ seq 512 + trainable-param table) on a GPU window
+  before the first long run.
