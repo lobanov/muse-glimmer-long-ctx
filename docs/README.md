@@ -21,5 +21,7 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 
 GPU chain: overnight (§3 grids + caveat) → suite (community suites) → stage3 (agentmem +
 PPL) → stage4 (§4 arm sweep: qk4.3/qk5.0/qk4.1/qk4.6/yarn4 × niah/semantic @ 128k–512k) →
-stage5 (dev refresh + verify-env, GPU freed, §7 dry-run → training-ready).
+stage5 (dev refresh + verify-env, GPU freed, §7 dry-run → training-ready) → stage6
+(§7 run1 launch: gates on dry-run OK + corpus ≥100 rows/≥5M tokens; §4 winner →
+--config-override, else stock knobs).
 Host-side: corpus batch (§5 scale-up) running concurrently.
