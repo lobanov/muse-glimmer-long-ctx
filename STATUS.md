@@ -11,7 +11,7 @@ Last updated: 2026-08-15.
 | §0 compat/memory spike | ✅ complete — all gates passed | `docs/phase0-compat-memory-spike.md` |
 | §1 environment pinning | ✅ complete | `docs/environment.md` |
 | §2 eval harness | ✅ core + NoLiMa + LongBench v2 + LongCodeQA + ∞Bench + custom agentmem; RULER-official/HELMET/LongSWE deferred by design | `docs/phase2-eval-harness.md` |
-| §3 stock baseline | 🔄 running — 107/378 ≤128k cells; **first live numbers: niah + niah_multi 100.0±0.0 (21 cells each) at 32k/64k, zero length-truncations**; harder tasks next; >128k + suites + §4 sweep + §7 dry-run all queued | `docs/results-snapshot.md` (auto-assembled) |
+| §3 stock baseline | 🔄 running — 109+/378 ≤128k cells; niah/niah_multi 100.0±0.0 so far; **plugin suite live-verified** through the real runner (nolima/lb-v2/lqa/infbench/agentmem) — infb_kv 1.0 @124k-ptok UUID retrieval, agentmem 4/4; lb-v2/lqa single-cell misses = real difficulty; >128k + suites + §4 + §7 dry-run queued | `docs/results-snapshot.md` |
 | §4 zero-shot arms | 🔧 arms built & validated (qk 4.1/4.3/4.6/5.0, yarn4, stock-524k); GGUF-metadata spike answered; runs queued behind §3 | `docs/phase4-zeroshot-arms.md`, `outputs/arms/` |
 | §5 training corpus | ✅ PIPELINE COMPLETE — all 5 components validated end-to-end (repos 35% · synth 30% · natural 15% · agent 10% · short 10%), mixer emits train.jsonl + manifest; scale-up = runtime | `docs/phase5-corpus-plan.md`, `src/muse_longctx/corpus/`, `outputs/corpus/train_v1/` |
 | §6 position sampler | ✅ complete + selftested | `docs/phase6-position-sampler.md` |
