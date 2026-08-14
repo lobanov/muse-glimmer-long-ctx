@@ -41,6 +41,13 @@ def build(arm: str, base: str, out_root: str):
                               # the 10k default would silently rewrite SWA frequencies
                               "rope_theta": float(tc.rope_parameters["rope_theta"])}
         tc.max_position_embeddings = 524288
+    elif arm == "stock-524k":
+        # MECHANICAL window extension only (max_position_embeddings 131072 -> 524288).
+        # No adaptation method: NoPE layers take no positions; RoPE lives on SWA layers
+        # at <=2048 relative distance. Required for engines to ACCEPT >131k prompts
+        # when evaluating stock Glimmer beyond its nominal limit (PLAN §3 "where the
+        # runtime permits").
+        tc.max_position_embeddings = 524288
     elif arm == "stock":
         pass
     else:
@@ -64,7 +71,7 @@ def build(arm: str, base: str, out_root: str):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", action="append", required=True,
-                    choices=[*QK_ARMS, "yarn4", "stock"])
+                    choices=[*QK_ARMS, "yarn4", "stock", "stock-524k"])
     ap.add_argument("--base", default="meta-models/Muse-Glimmer-30B")
     ap.add_argument("--out-root", default="outputs/arms")
     a = ap.parse_args()
