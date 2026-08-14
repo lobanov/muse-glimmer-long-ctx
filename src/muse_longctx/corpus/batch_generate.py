@@ -31,7 +31,9 @@ REPOS = [  # popular permissive-licensed; license+exclusion gates re-check each 
 BOOKS = [1342, 84, 2701, 1661, 98, 1400]
 SYNTH = [(65536, 3), (98304, 3), (131072, 2)]      # (doc_tokens, n_docs) — genuine backbone
 BOOK_SLICES = [(65536, 2), (131072, 2), (262144, 2)]  # (tokens, n_slices) across books
-AGENT_REPOS = ["tiangolo/typer", "simonw/sqlite-utils", "pallets/click"]
+AGENT_REPOS = ["tiangolo/typer", "simonw/sqlite-utils", "pallets/click",
+               "encode/starlette", "textualize/rich", "miekg/dns", "golang/mock",
+               "uber-go/zap", "burntsushi/ripgrep"]
 
 
 def sh(args, timeout=3600):
