@@ -149,6 +149,23 @@ Each of these was verified the hard way; the file that encodes the fix is listed
   → `pyproject.toml`
 - **bitsandbytes** on NGC 26.07 logs "No prebuilt binary for CUDA 13.3, loading CUDA 13.2" —
   benign. → set `BNB_CUDA_VERSION` only if an actual kernel failure appears.
+- **Host python ≠ dev python for Glimmer** — host has transformers 5.13 (no Muse Glimmer,
+  older `TokenizersBackend` API); any Glimmer tokenization/serialization MUST run inside
+  dev (5.15). Verified via `serialize.py` failing on host. → `batch_generate.py` (`sh_dev`),
+  `export_pipeline.sh` (`cpath`)
+- **llama.cpp b10428 converter flags** — `--outfile` (not `--out`; ambiguous-option
+  error), no `--vocab-type` (auto-detected), SPM-backed tokenizers need `sentencepiece`.
+  → `pyproject.toml`, `scripts/export_pipeline.sh`
+- **llama-imatrix was not in the default image build** — now an explicit cmake target
+  alongside server/cli/bench/quantize/gguf-split. → `llamacpp.Dockerfile`
+- **pi headless tool use**: `--no-approve` DENIES tool calls (agent runs but explores
+  nothing); `--approve` auto-approves — required for scratch workdirs
+  (`outputs/corpus/agent_work`), never for the real repo. → `corpus/agent_traj.py`
+- **Comments inside a compose `command: >` folded block** become literal command text
+  and break parsing (services vanish from `docker compose config`). Keep comments above
+  the block. → `docker-compose.yml`
+- **`outputs/` subdirs created by container processes are root-owned** — host writes then
+  fail with EPERM; fix via `docker exec dev chmod -R a+rwX ...` (live bind mount).
 
 ## 6. Troubleshooting
 
