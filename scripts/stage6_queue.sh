@@ -16,7 +16,14 @@ log() { echo "[$(date '+%F %T')] $*" >> logs/stage6-queue.log; }
 
 log "stage6 armed (pid $$)"
 while :; do
-    [ -f logs/stage5-queue.done ] && grep -q "dry-run OK" logs/stage5-queue.done && break
+    if [ -f logs/stage5-queue.done ]; then
+        grep -q "dry-run OK" logs/stage5-queue.done && break
+        if grep -q "dry-run FAILED" logs/stage5-queue.done; then
+            echo "blocked: stage5 dry-run FAILED $(date '+%F %T')" > logs/train1.launched
+            log "BLOCKED: §7 dry-run failed (see logs/stage5-queue.log) — NOT training; fix trainer wiring first"
+            exit 1
+        fi
+    fi
     sleep 300
 done
 log "G1 ok: stage5 dry-run OK"
