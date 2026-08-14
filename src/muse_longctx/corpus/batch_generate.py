@@ -43,6 +43,20 @@ def sh(args, timeout=3600):
     return ok, (r.stdout + r.stderr).strip().splitlines()[-1] if (r.stdout + r.stderr).strip() else ""
 
 
+DEV = "muse-glimmer-long-ctx-dev-1"
+DEVPATH = "/workspaces/muse-glimmer-long-ctx"   # repo root inside dev (tokenizer+5.15 there)
+
+
+def sh_dev(args, timeout=3600):
+    """Run a repo script INSIDE the dev container (host transformers is too old for
+    Glimmer serialization; host↔dev paths translated)."""
+    dev_args = [a.replace(ROOT, DEVPATH) for a in args]
+    cmd = ["docker", "exec", DEV, "python3"] + dev_args
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=ROOT)
+    ok = r.returncode == 0
+    return ok, (r.stdout + r.stderr).strip().splitlines()[-1] if (r.stdout + r.stderr).strip() else ""
+
+
 def batch(name, items, runner, log):
     done = 0
     for i, item in enumerate(items, 1):
@@ -118,15 +132,16 @@ def main():
                            "--seed", str(700 + k), "--out", out, "--validate"])
             log(f"[short {k+1}/4] {'OK' if ok else 'SKIP'} {tail[:100]}")
 
-    # 6. serialize everything new, then remix
+    # 6. serialize everything new (in dev: tokenizer + transformers 5.15 live there),
+    #    then remix (host: stdlib only)
     for comp in ("repos_v1", "synth_v1", "nat_v1", "agent_v1", "short_v1"):
         d = os.path.join(CORPUS, comp)
         for fn in os.listdir(d) if os.path.isdir(d) else []:
             if fn.endswith(".jsonl") and not fn.endswith(".samples.jsonl"):
                 src, dst = os.path.join(d, fn), os.path.join(d, fn[:-6] + ".samples.jsonl")
                 if not os.path.exists(dst):
-                    ok, tail = sh([os.path.join(HERE, "serialize.py"), "--doc", src,
-                                   "--out", dst])
+                    ok, tail = sh_dev([os.path.join(DEVPATH, "src/muse_longctx/corpus/serialize.py"),
+                                       "--doc", src, "--out", dst])
                     log(f"[serialize {fn}] {'OK' if ok else 'FAIL'} {tail[:100]}")
     ok, tail = sh([os.path.join(HERE, "build_corpus.py"), "--name", "train_v1"])
     log(f"[mix] {'OK' if ok else 'FAIL'} {tail[:200]}")
