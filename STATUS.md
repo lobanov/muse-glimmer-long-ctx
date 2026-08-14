@@ -82,3 +82,7 @@ Last updated: 2026-08-15.
   validated; insurance for first-ever streaming call vs llama-server), stage6 exits with
   blocked marker on dry-run FAILED (was infinite wait); CONTRIBUTING §5 gotchas recorded;
   next-session runbook added.
+- live §3 signal (00:50): counting degrades with length — 0.952 @32k → 0.625 @64k (n=8,
+  partial) — while niah/niah_multi/multihop stay 1.000 everywhere. First non-trivial
+  baseline result: aggregation/counting is the weak axis, retrieval is robust ≤128k.
+  Feeds phase-3 report + §10 (expected mode B: distractor-load, not positional).
