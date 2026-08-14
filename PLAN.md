@@ -1,20 +1,53 @@
 # PLAN — Muse Glimmer 30B 512k Context Extension
 
+> Revision 2 — updated with verified model facts and engine-compatibility research (Aug 2026).
+> See `MODEL.md` for the full architecture reference. Key verified facts that shaped this revision:
+> - Glimmer has **2 KV heads** (`num_key_value_heads: 2`, 16× GQA sharing) — the 512k F16 KV cache is only ~7 GB, so the original memory concern is resolved.
+> - Glimmer ships a native attention-temperature knob (`qk_scale_factor: 3.87` after QK-RMSNorm) — a new zero-shot experiment arm.
+> - The model is a **VLM** (28B text decoder + 2B vision tower) — training and GGUF export must handle the multimodal packaging.
+> - Day-0 support: transformers v5, llama.cpp (build ≥ 10353), vLLM, SGLang (branch). TurboQuant KV exists in forks (RTX 5090-validated) and natively in vLLM.
+> - **GLM-5.2** (753B MoE, MIT, 1M context) is the synthetic-data teacher, via Z.ai API.
+
+---
+
+## 0. Compatibility & Memory Spike (new, do first)
+
+Before any benchmark or training run:
+
+1. **Engine bring-up**
+   - transformers ≥ 5.15 (model requires `transformers_version: 5.15.0.dev0`); pin exact version.
+   - llama.cpp build ≥ **10353** (Meta's requirement for the official GGUFs); build with CUDA 12.8+ for sm_120 (RTX 5090). Note: CUDA 13.1 has a known MMQ segfault in TurboQuant forks — standardize on 12.8/12.9.
+   - vLLM with `--model-impl transformers --tool-call-parser muse_glimmer --reasoning-parser muse_glimmer`.
+2. **Parity check**: stock BF16 (HF) vs official `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` on a RULER subset at 32k–128k. This is the quant-noise floor for all later comparisons.
+3. **iSWA verification**: load the GGUF at 128k and confirm in llama.cpp logs that the 39 sliding-window layers get a *window-sized* SWA cache, not full-context cache (`--swa-full` must NOT be set). Expected fixed SWA cost ≈ 82 MB.
+4. **KV memory model** (measured, not just computed): global-layer KV is 13,312 B/token at F16:
+   | Context | F16 KV | Q8_0 KV | turbo3 (~4.9×) |
+   |---|---:|---:|---:|
+   | 128k | 1.75 GB | 0.9 GB | ~0.36 GB |
+   | 256k | 3.5 GB | 1.75 GB | ~0.7 GB |
+   | 512k | 7.0 GB | 3.5 GB | ~1.4 GB |
+   | 1M | 14 GB | 7 GB | ~2.9 GB |
+   With ~17 GB weights, **F16 KV at 512k fits a 32 GB RTX 5090** (~25–27 GB total incl. buffers). Record actual totals.
+5. **TurboQuant fork build** (optional but pre-staged): `Madreag/turbo3-cuda` is validated on RTX 5090 (sm_120, FA required, turbo3 only). Also available: `TheTom/llama-cpp-turboquant` (turbo3+turbo4). Verify a build boots and passes a NIAH smoke test. Watch for the Blackwell CMake gotcha: stale `GGML_CUDA_FORCE_CUBLAS=ON` in the cache costs ~50% decode — always configure from a clean build dir.
+
+**Go/no-go gates** (numeric, decided before Phase 3):
+- Stock GGUF at 128k within ~2 points of BF16 on the RULER subset → quant artifact acceptable as baseline.
+- If F16-KV 512k total VRAM > 30 GB on the 5090 → fall back to Q8_0 KV (upstream llama.cpp, zero forks) and treat turbo3 as upside.
+
+---
+
 ## 1. Establish the Reproducible Environment
 
 Use:
 
 - NVIDIA NGC PyTorch container on DGX Spark
-- PyTorch
-- Hugging Face Transformers
-- PEFT
-- bitsandbytes
-- Accelerate
+- PyTorch, **transformers v5** (≥ 5.15), PEFT, bitsandbytes, Accelerate, TRL (Meta ships Glimmer TRL examples)
 - Hugging Face Datasets / PyArrow / Parquet
-- SGLang for research inference
-- llama.cpp for final GGUF/K-Quant deployment
+- **vLLM as primary research-inference engine** (mainline day-0 support, fastest prefill at ≥256k, native TurboQuant KV via `--kv-cache-dtype turboquant_4bit_nc` with per-layer skip)
+- llama.cpp for final GGUF/K-Quant deployment (and for TurboQuant via fork, see §0)
+- SGLang only if a concrete need emerges (its Glimmer support is branch-based, `muse-glimmer` branch)
 
-Pin all versions and commits once a known-good Glimmer configuration is established.
+Pin all versions and commits once a known-good Glimmer configuration is established. Record llama.cpp build numbers, fork commits, and CUDA toolkit versions.
 
 Avoid introducing DeepSpeed, FSDP, Axolotl, LLaMA-Factory or NeMo unless later experiments demonstrate a concrete need.
 
@@ -26,23 +59,11 @@ Before training, create a common runner and normalized result format.
 
 Evaluate at:
 
-- 32k
-- 64k
-- 128k
-- 192k
-- 256k
-- 384k
-- 512k
+- 32k, 64k, 128k, 192k, 256k, 384k, 512k
 
 Where practical, vary evidence position across approximately:
 
-- 0%
-- 10%
-- 25%
-- 50%
-- 75%
-- 90%
-- 100%
+- 0%, 10%, 25%, 50%, 75%, 90%, 100%
 
 Integrate:
 
@@ -57,19 +78,23 @@ Integrate:
 
 Store results in a common Parquet schema so configurations can be compared directly.
 
+**Sampling and template controls** (all runs, all engines — otherwise results are not comparable to community reports):
+
+- temperature 1.0, top-p 0.95, top-k 64 (Meta's recommended defaults)
+- fix `reasoning_strength` explicitly (e.g., low) in every chat-template call; log it
+- greedy decoding (temp 0) only for deterministic parity checks, never for capability scores
+
+**Robustness**: report confidence intervals over ≥ 3 seeds / instance resamples for RULER-style tasks at extreme lengths (instance counts are small and variance is high). Include abstention cases (needle absent → expected "I don't know"). Log prompt-ingestion (prefill) wall-clock at every length — on a 5090, 512k prefill takes minutes and matters for the agentic use case.
+
+Keep all evaluation benchmark repositories and examples strictly excluded from training data.
+
 ---
 
 ## 3. Establish the Stock Glimmer Baseline
 
 Run unmodified Glimmer beyond its nominal 128k context limit where the runtime permits.
 
-Test:
-
-- 128k
-- 192k
-- 256k
-- 384k
-- 512k
+Test: 128k, 192k, 256k, 384k, 512k (and a 1M probe if memory allows — see below).
 
 Measure:
 
@@ -77,36 +102,32 @@ Measure:
 - retrieval position sensitivity
 - multi-hop degradation
 - code/repository performance
-- perplexity where useful
-- prompt-ingestion latency
-- peak memory
-- decode speed
+- perplexity where useful (note: `final_logit_softcapping: 20.0` — use a compatible PPL implementation)
+- prompt-ingestion latency, peak memory, decode speed
 
-This determines whether Glimmer's Local-RoPE / Global-NoPE architecture already extrapolates substantially without training.
-
-Do not assume YaRN is necessary until this baseline is measured.
+Prior expectation to test, not assume: community reports (r/LocalLLaMA, Aug 2026) claim verified needle retrieval at **1M context zero-shot**, and Meta publishes a Beam 128K score of 65.1. The NoPE-global design may extrapolate substantially without training. If stock@512k is already within a few points of stock@128k on RULER/NoLiMa, the project shifts from "teach extrapolation" to "strengthen, qualify, and deploy" (per the Decision Rule) — write down that threshold now (suggested: ≥ 85% relative retention on retrieval tasks → training becomes optional/targeted).
 
 ---
 
-## 4. Create a Zero-Shot YaRN-4 Configuration
+## 4. Create Zero-Shot Extension Configurations
 
-Configure:
+Two arms, both config-only, no training. Order matters — run (a) first.
 
-- maximum context: 524,288
-- YaRN factor: 4
-- original context: 131,072
-- original local RoPE theta retained
-- standard YaRN beta/scaling defaults initially
+### (a) Attention-temperature sweep on the global NoPE layers — primary hypothesis
 
-Apply YaRN only through the model's existing RoPE mechanism; do not force rotary embeddings into the NoPE global layers.
+Glimmer applies RMSNorm to every Q/K head and then multiplies queries by `qk_scale_factor` (3.87), which Meta describes as an inverse softmax temperature. Attention-entropy growth in NoPE layers under distractor load is the predicted failure mode at 256k–512k; this knob targets it directly (cf. Wu et al. 2024, NoPE length generalization via attention temperature).
 
-Run the full baseline evaluation again.
+- Sweep `qk_scale_factor` ≈ 3.87 → 4.1 / 4.3 / 4.6 / 5.0 (≈ 1.05–1.3× logit sharpening) on the 13 global layers.
+- Also verify early (§0 spike): does `convert_hf_to_gguf.py` carry `qk_scale_factor` and `layer_rope_theta` into GGUF metadata, so config-only changes survive the deployment path?
+- If per-layer values are supported, prefer tuning only global layers (local SWA layers never see > 2048 relative distance).
 
-Compare:
+### (b) YaRN-4 — kept as a control, expected near-inert
 
-**Stock Glimmer vs YaRN-4 zero-shot**
+Configure: max context 524,288; YaRN factor 4; original context 131,072; local RoPE theta (500,000) retained; standard YaRN beta/scaling defaults. Apply only through the existing RoPE mechanism of the SWA layers; do not force rotary embeddings into NoPE global layers.
 
-This isolates the benefit or harm from positional rescaling before training.
+Rationale for "control" status: with θ = 500k and a 2,048-token window, RoPE in the local layers operates at tiny relative distances; rescaling its frequencies should change almost nothing. Run it anyway — it is cheap, and a nonzero result would be an interesting finding.
+
+Run the full baseline evaluation for both arms. Compare: **stock vs qk-scale sweep vs YaRN-4**. This isolates benefit or harm from each mechanism before any training.
 
 ---
 
@@ -122,16 +143,18 @@ Target mixture:
 | Coding-agent trajectories | 10% |
 | Short-context replay | 10% |
 
+### Teacher: GLM-5.2
+
+- `zai-org/GLM-5.2` — 753B MoE (~40B active), **MIT license**, 1M-token context, 131k output, trained specifically for long-horizon coding-agent scenarios. Ideal teacher for this corpus.
+- Too large to self-host on the Spark (~380 GB even at 4-bit) → generate via **Z.ai API** (GLM-5.2 API priced same as GLM-5.1). Design for API throughput: batched templates, full caching of prompts/completions, seeds and params logged.
+- Every generated task carries machine-checkable ground truth (planted needles, compiled tests, deterministic answer keys). Add a teacher-verification pass: regenerate or cross-check answers so flawed generations are filtered, not hand-repaired.
+- Watch for a smaller GLM-5.2 open variant (e.g., Air-class); if one ships, local generation on the Spark becomes viable for the bulk volume, with 5.2 API reserved for the hardest multi-hop/agentic items.
+
 ### Repository Data
 
 Use repository-level samples from sources such as The Stack v2 / Software Heritage.
 
-Prefer repositories spanning:
-
-- 32–64k tokens
-- 64–128k
-- 128–256k
-- 256–512k
+Prefer repositories spanning: 32–64k, 64–128k, 128–256k, 256–512k tokens.
 
 Generate tasks requiring evidence across multiple files and distant locations.
 
@@ -141,50 +164,25 @@ Strictly exclude repositories used by evaluation suites such as LongCodeBench, R
 
 Generate tasks analogous in capability to RULER and NoLiMa, without copying benchmark examples or templates.
 
-Include:
-
-- single retrieval
-- multi-needle retrieval
-- conflicting facts
-- variable/entity tracking
-- multi-hop chains
-- aggregation/counting
-- set intersection
-- chronological reconstruction
-- semantic retrieval with little lexical overlap
+Include: single retrieval; multi-needle retrieval; conflicting facts; variable/entity tracking; multi-hop chains; aggregation/counting; set intersection; chronological reconstruction; semantic retrieval with little lexical overlap; **abstention** (needle absent).
 
 Control both task difficulty and evidence position.
 
 ### Natural Long Documents
 
-Use a limited amount of:
-
-- books
-- technical manuals
-- scientific papers
-- related-document collections
-- documentation corpora
-
-Prefer tasks requiring cross-section synthesis rather than simple extraction.
+Limited amounts of: books, technical manuals, scientific papers, related-document collections, documentation corpora. Prefer tasks requiring cross-section synthesis rather than simple extraction.
 
 ### Coding-Agent Trajectories
 
-Generate tool-using coding sessions over training-only repositories.
+Generate tool-using coding sessions over training-only repositories (GLM-5.2 as the agent; the sessions themselves are the data).
 
-Retain:
-
-- tool calls
-- tool results
-- failed hypotheses
-- tests
-- intermediate discoveries
-- long command output
+Retain: tool calls, tool results, failed hypotheses, tests, intermediate discoveries, long command output.
 
 Construct tasks where later decisions depend on information observed tens or hundreds of thousands of tokens earlier.
 
 ### Short Replay
 
-Retain approximately 10% high-quality ordinary instruction/coding data to reduce regression.
+Retain ~10% high-quality ordinary instruction/coding data to reduce regression.
 
 ---
 
@@ -192,15 +190,9 @@ Retain approximately 10% high-quality ordinary instruction/coding data to reduce
 
 Implement a small reusable component producing:
 
-- `input_ids`
-- `position_ids`
-- labels
-- loss masks
-- evidence positions
-- physical sequence length
-- virtual context length
+- `input_ids`, `position_ids`, `labels`, `loss masks`, `evidence positions`, `physical sequence length`, `virtual context length`
 
-Support at least:
+Support:
 
 1. normal positions
 2. uniform positional offsets
@@ -209,7 +201,9 @@ Support at least:
 5. Randomized-YaRN-style virtual ranges
 6. genuine long sequences
 
-This component is central to the experiment and should remain independent from the trainer.
+**Scope note (architecture-specific):** for Glimmer, modes 2–5 train the local RoPE layers' absolute-position robustness only; the 13 global NoPE layers have no position IDs, and the SWA layers rarely attend beyond 2,048 relative distance. Expect virtual-position training to be close to inert for this model; genuine long sequences (mode 6) carry nearly all of the signal. Keep the modes implemented for ablation completeness, but do not budget majority training time to them (see §7 mixture, revised below).
+
+This component remains independent from the trainer.
 
 ---
 
@@ -219,154 +213,137 @@ Start with QLoRA rather than full fine-tuning.
 
 Initial configuration:
 
-- 4-bit NF4 base
-- BF16 compute
+- 4-bit NF4 base, BF16 compute
 - LoRA rank 16–32
 - gradient checkpointing
 - single-process Accelerate
-- attention projections first:
-  - `q_proj`
-  - `k_proj`
-  - `v_proj`
-  - `o_proj`
+- attention projections first: `q_proj`, `k_proj`, `v_proj`, `o_proj`
+- **VLM handling**: load the full `MuseGlimmerForConditionalGeneration`, attach LoRA only to the text-decoder submodule, keep the vision tower and projector frozen. Text-only training data; no image/video tokens.
+- Watch `final_logit_softcapping` compatibility in the trainer (it is part of the forward pass, not optional).
 
-Do not initially adapt all MLP layers.
+Pre-staged fallback arm: **BF16-base + LoRA** (no NF4). Meta's own TRL experiments needed ~80 GB for BF16 LoRA; the Spark's 128 GB unified memory accommodates it (slowly). Switch to this arm if the first QLoRA run shows weak lift over zero-shot — NF4 base noise can compound with long-context difficulty.
 
-Use a training-length mixture approximately like:
+Training-length mixture (revised for this architecture — genuine length dominates):
 
-- 50–60%: 32–64k physical sequences with virtual positions spanning up to 512k
-- 25–35%: genuine 96–128k sequences
+- **55–70%: genuine 96–256k sequences** (the distractor load on the 13 global layers is the thing being trained)
+- 10–20%: genuine 32–64k sequences (cheap volume, still real attention load)
+- 10–15%: 32–64k physical sequences with virtual positions to 512k (ablation coverage; expected low yield)
 - 10–20%: ordinary short-context replay
 
-Include some genuinely long sequences because virtual positions alone cannot reproduce the distractor load experienced by the 13 global full-attention layers.
+If Spark throughput makes 256k sequences impractical at volume, train genuine at 128–256k and evaluate extrapolation to 512k — legitimate here precisely because positions are not the bottleneck for the global layers.
 
 ---
 
 ## 8. Evaluate the First Trained Model
 
-Compare three states:
+Compare states (all with the same length buckets and benchmark subsets):
 
 1. stock Glimmer
-2. YaRN-4 zero-shot
-3. YaRN-4 + QLoRA adaptation
-
-For every state, measure the same context-length buckets and benchmark subsets.
+2. best zero-shot configuration (qk-scale and/or YaRN, from §4)
+3. YaRN-4/qk-scale + QLoRA adaptation (whichever config the trainer used)
 
 Primary questions:
 
-- Does YaRN help at all?
-- Does training improve 256k–512k performance?
+- Does the zero-shot temperature knob help at 256k–512k?
+- Does training improve on the best zero-shot state?
 - Is retrieval failure positional or primarily attention/selectivity related?
-- What capability is lost at <=128k?
+- What capability is lost at ≤ 128k?
 - Where does degradation become steep?
 
 ---
 
 ## 9. Perform Targeted Ablations
 
-Only after the first end-to-end result, test:
+Only after the first end-to-end result:
 
 ### LoRA location
 
 Compare:
 
-- local RoPE layers only
+- local RoPE (SWA) layers only
 - global NoPE layers only
 - all attention layers
 
-This can reveal whether the limiting factor is positional adaptation or global retrieval/selectivity.
+This reveals whether the limiting factor is positional adaptation or global retrieval/selectivity. (Prior: global layers only ≈ all layers ≫ local only.)
 
 ### LoRA capacity
 
-Compare, as needed:
+Compare as needed: rank 8 / 16 / 32 / 64.
 
-- rank 8
-- rank 16
-- rank 32
-- rank 64
+### Attention-temperature refinement
+
+- fixed `qk_scale_factor` sweep values (from §4a) vs.
+- learnable per-head or per-global-layer logit scale trained alongside LoRA
+
+Caveat: a learnable logit scale is not expressible as a plain weight delta — it will not survive merge→GGUF unless exported as config/metadata. Decide early whether that export path exists; if not, restrict to fixed config values that GGUF carries natively.
 
 ### Training-position strategy
 
-Compare:
-
-- genuine long sequences only
-- PoSE/randomized virtual positions only
-- mixed strategy
+Compare: genuine long sequences only; virtual positions only; mixed strategy. (Expected: genuine ≫ mixed ≫ virtual.)
 
 ### YaRN factor
 
-If useful, compare:
+If it moved the needle at all in §4: 2× / 256k, 3× / ~384k, 4× / 512k.
 
-- 2× / 256k
-- 3× / ~384k
-- 4× / 512k
-
-The goal is not necessarily the largest nominal context; it is the strongest useful context under the deployment constraint.
+The goal is not the largest nominal context; it is the strongest useful context under the deployment constraint.
 
 ---
 
 ## 10. Add Training Only Where the Diagnostics Indicate
 
-If local positional errors dominate:
+If local positional errors dominate (unlikely given the 2,048 window):
 
-- refine YaRN parameters
-- increase position-randomized training
-- concentrate LoRA capacity on local attention layers
+- refine YaRN parameters; increase position-randomized training; concentrate LoRA capacity on local attention layers
 
-If global retrieval/selectivity dominates:
+If global retrieval/selectivity dominates (expected):
 
 - increase multi-needle and distractor-heavy data
 - increase genuine long-context examples
 - concentrate adaptation on global NoPE attention layers
+- revisit the attention-temperature knob (fixed or learnable)
 - generate harder semantic and multi-hop retrieval tasks
 
 If short-context regressions appear:
 
-- increase replay proportion
-- reduce LoRA rank
-- reduce learning rate or training duration
-- constrain adaptation to fewer modules
+- increase replay proportion; reduce LoRA rank; reduce learning rate or training duration; constrain adaptation to fewer modules
 
 ---
 
 ## 11. Merge and Export the Best Adapter
 
-Once a clear checkpoint wins:
+Once a checkpoint wins:
 
-1. reload the original Hugging Face model
-2. merge the LoRA adapter
-3. validate the merged BF16 checkpoint
-4. export to GGUF
-5. quantize to the target approximately 17 GB K-Quant format
+1. reload the original Hugging Face model (full multimodal checkpoint)
+2. merge the LoRA adapter into the **text decoder only**; vision tower, projector, and tokenizer untouched
+3. validate the merged BF16 checkpoint (parity vs adapter-on-base at 128k on the RULER subset)
+4. export to GGUF via `convert_hf_to_gguf.py`; **verify metadata survived**: `layer_types`/SWA flags, `layer_rope_theta` (NoPE pattern), `qk_scale_factor`, sliding window, chat template
+5. quantize to the target ~17 GB K-Quant format with an **importance matrix generated from long-context code + retrieval-style calibration data** (not the default set)
+6. **DFlash drafter check**: the stock `dflash-*.gguf` drafter must still load against the requantized model (`--spec-type draft-dflash`); measure draft acceptance rate vs the stock model — a big drop signals the merged model drifted off-distribution for the drafter
+7. keep the official `mmproj` projector file loadable alongside the new GGUF
 
-Do not assume BF16 evaluation results transfer perfectly through quantization.
+Do not assume BF16 evaluation results transfer perfectly through quantization. Run a cheap quant-parity mini-suite (128k RULER subset + short bench, BF16-merged vs GGUF) before any full 512k GGUF evaluation.
 
 ---
 
-## 12. Qualify the Final 32 GB Deployment Artifact
+## 12. Qualify the Final 32 GB Deployment Artifact (RTX 5090)
 
-Run the final GGUF in llama.cpp on the target 32 GB GPU.
+Run the final GGUF in llama.cpp on the 5090.
 
-Test:
-
-- 128k
-- 256k
-- 384k
-- 512k
+Test: 128k, 256k, 384k, 512k.
 
 Measure:
 
-- total VRAM
-- KV-cache memory
-- prompt-processing speed
-- decode speed
-- benchmark accuracy
-- stability
-- quantization regression
+- total VRAM, KV-cache memory (confirm iSWA engagement in logs)
+- prompt-processing speed, decode speed — with and without DFlash speculative decoding (drafter memory vs context trade-off must be measured at 512k)
+- benchmark accuracy, stability, quantization regression
 
-Start with F16 KV.
+KV strategy (in order):
 
-If 512k memory margin is insufficient, test Q8 KV and quantify any quality/performance change.
+1. **F16 KV** — primary target; expected ~7 GB at 512k, fits
+2. **Q8_0 KV** — fallback; upstream llama.cpp, zero forks, ~3.5 GB at 512k
+3. **turbo3 (TurboQuant fork)** — headroom/1M enabler; ~1.4 GB at 512k. Two mandatory checks before trusting it:
+   - Glimmer's QK-RMSNorm should neutralize the K-norm-disparity failure mode seen on Qwen-class models, and head_dim 128 is the validated regime — but verify with needle tests at full depth, not just PPL (community REFRACT data shows turbo3 V-cache can degrade generation trajectories on some dense models while PPL looks fine)
+   - prefer asymmetric configs if quality dips (e.g., q8_0 K + turbo3 V is not the standard fix — test turbo3 K+V first, then q8_0/turbo3 mixes)
 
 ---
 
@@ -374,13 +351,11 @@ If 512k memory margin is insufficient, test Q8 KV and quantify any quality/perfo
 
 Only attempt 1M after 512k is robust.
 
-Potential configuration:
+Memory is no longer the binding constraint: turbo3 KV ≈ 2.9 GB at 1M (14 GB at F16 also borderline-fits with 17 GB weights). The binding constraint is **compute in the 13 global full-attention layers** (quadratic prefill, linear-per-token decode over 1M entries) plus prefill wall-clock on a single 5090.
 
-- same approximately 17 GB weights
-- Q8 KV cache
-- extended YaRN/position training
+Potential configuration: same ~17 GB weights, turbo3 KV, extended YaRN/position training only if §4 showed any positional effect.
 
-Treat 1M as a separate research target because full-attention compute in the 13 global layers is likely to become more important than raw VRAM capacity.
+Treat 1M as a separate research target; expect decode speed and prefill time, not VRAM, to be the practical limits.
 
 ---
 
@@ -388,22 +363,16 @@ Treat 1M as a separate research target because full-attention compute in the 13 
 
 Produce:
 
-1. reproducible environment specification
-2. training-data generation scripts
+1. reproducible environment specification (incl. llama.cpp/fork build numbers, CUDA version, transformers v5 pin)
+2. training-data generation scripts (GLM-5.2 API pipeline with verification passes)
 3. context/position sampler
-4. QLoRA training configuration
-5. benchmark harness
-6. baseline and ablation results
+4. QLoRA training configuration (+ BF16-LoRA fallback config)
+5. benchmark harness with pinned sampling/template controls
+6. baseline, zero-shot (qk-scale, YaRN), and ablation results
 7. merged Hugging Face checkpoint
-8. approximately 17 GB K-Quant GGUF
-9. 32 GB / 512k deployment configuration
-10. concise report describing:
-   - effective context
-   - memory use
-   - throughput
-   - benchmark results
-   - regressions
-   - remaining limitations
+8. ~17 GB K-Quant GGUF (with long-context imatrix, verified metadata, DFlash-compatible)
+9. 32 GB / 512k deployment configuration (RTX 5090)
+10. concise report describing: effective context, memory use, throughput, benchmark results, regressions, remaining limitations
 
 ## Decision Rule
 
