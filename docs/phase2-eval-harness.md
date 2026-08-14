@@ -58,4 +58,6 @@ up (deferred until the §3 vLLM grid finishes — GPU is serial; tracked in PLAN
 - Community suites (RULER proper, NoLiMa proper, LongBench v2, ∞Bench, HELMET,
   LongCodeBench/LongSWE) are not yet wired: they need dataset downloads + licence checks
   and will be integrated as additional task modules against the same schema when the §3
-  baseline establishes where synthetic tasks saturate.
+  baseline establishes where synthetic tasks saturate. NoLiMa canonical dataset pinned:
+  `amodaresi/NoLiMa` (needles + haystacks; 10-hop subset of interest). The Stack v2 access
+  verified for §5 interim path (gated=auto via current token).

@@ -158,11 +158,12 @@ Target mixture:
 
 ### Teacher: GLM-5.2
 
-**Status (2026-08-14): BLOCKED** — no Z.ai API key in `.devcontainer/.env` (only `HF_TOKEN`).
-Escalated to the project owner; corpus generation cannot start without it. §6 was pulled
-forward (GPU-free) in the meantime; §7 trainer skeleton can be written but not exercised
-at scale without §5 data (short-context replay + The Stack v2 slices are viable interim
-sources if the key stays unavailable — decide with the owner).
+**Status (2026-08-14): BLOCKED on teacher** — no Z.ai API key in `.devcontainer/.env` (only `HF_TOKEN`).
+Escalated to the project owner; teacher generation cannot start without it. **Interim path verified
+viable**: the current HF token HAS access to `bigcode/the-stack-v2` (gated=auto, checked
+2026-08-14) — a Stack-v2-slice + short-replay corpus can be built without the Z.ai key if
+the owner approves. §6 was pulled forward (GPU-free); §7 trainer skeleton is written but
+unexercised at scale.
 
 - `zai-org/GLM-5.2` — 753B MoE (~40B active), **MIT license**, 1M-token context, 131k output, trained specifically for long-horizon coding-agent scenarios. Ideal teacher for this corpus.
 - Too large to self-host on the Spark (~380 GB even at 4-bit) → generate via **Z.ai API** (GLM-5.2 API priced same as GLM-5.1). Design for API throughput: batched templates, full caching of prompts/completions, seeds and params logged.
