@@ -34,6 +34,7 @@ KQUANT="$WORK/${NAME}-Q4_K_M.gguf"
 CALIB="$WORK/calibration.txt"
 LLAMA_CPP="${LLAMA_CPP:-/cache/weights/tools/llama.cpp}"
 COMPOSE="docker compose -f $ROOT/.devcontainer/docker-compose.yml"
+cd "$ROOT"   # host-side corpus globs (stage 5) resolve from repo root
 
 cpath() { echo "$1" | sed "s|^$ROOT|$CROOT|"; }   # host repo path -> dev path
 want() { echo " $STAGES " | grep -q " $1 "; }
@@ -102,10 +103,10 @@ fi
 if want 5; then
   [ -f "$IMATRIX" ] && log "stage5: $IMATRIX exists, skip" || {
     log "stage5: building calibration text from corpus (long-context code + retrieval)"
-    python3 - "$CALIB" <<'PY'
-import glob, json, sys
+    # build on HOST into the repo (bind-mounted everywhere), then copy into $WORK in dev
+    python3 - "$GGUF_OUT/calibration.txt" <<'PY'
+import glob, json, os, sys
 os_dir = sys.argv[1]
-import os
 os.makedirs(os.path.dirname(os_dir), exist_ok=True)
 out = open(os_dir, "w")
 total = 0
@@ -124,7 +125,8 @@ for pat in ("outputs/corpus/repos_v1/*.jsonl", "outputs/corpus/synth_v1/synth_*.
 out.close()
 print(f"calibration: {total} documents -> {os_dir}")
 PY
-    docker exec "$DEV" bash -c "mkdir -p $WORK && cp $(cpath "$CALIB") $CALIB"
+    docker exec "$DEV" bash -c "mkdir -p $WORK && \
+      cp $(cpath "$GGUF_OUT/calibration.txt") $CALIB"
     log "stage5: llama-imatrix (llamacpp container, shared $WORK)"
     $COMPOSE --profile llamacpp run --rm --no-deps llamacpp bash -c \
       "/src/llama.cpp/build/bin/llama-imatrix -m $BF16 -f $CALIB -o $IMATRIX \
@@ -153,7 +155,9 @@ if want 7; then
      --host 0.0.0.0 --port 8099 --jinja 2>&1 | grep -E 'loaded|draft|error|spec' | head -8" \
     || log "stage7: WARN — check flags (--spec-type/--draft-model) against build docs"
   log "stage7: copying artifacts into repo ($GGUF_OUT)"
-  cp -f "$KQUANT" "$GGUF_OUT/" && cp -f "$BF16" "$GGUF_OUT/" 2>/dev/null || true
+  HOSTWORK="$ROOT/cache/weights/export/$NAME"   # same dir as $WORK, host-side path
+  cp -f "$HOSTWORK/$(basename "$KQUANT")" "$GGUF_OUT/" \
+    && cp -f "$HOSTWORK/$(basename "$BF16")" "$GGUF_OUT/" 2>/dev/null || true
   log "stage7 done — artifact: $GGUF_OUT/$(basename "$KQUANT")"
 fi
 
