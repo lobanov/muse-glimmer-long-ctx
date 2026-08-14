@@ -44,7 +44,11 @@ def load_pool(d):
                 r = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            h = hashlib.sha1(str(r["input_ids"][:64]).encode()).hexdigest()
+            # dedupe on head+tail+length: the head alone is shared by all samples of
+            # one document (same body+template) — the tail carries question+answer.
+            ids = r["input_ids"]
+            h = hashlib.sha1((str(ids[:64]) + str(ids[-64:]) + str(len(ids))).encode()) \
+                .hexdigest()
             if h in seen:
                 continue
             seen.add(h)
