@@ -16,7 +16,7 @@ Last updated: 2026-08-15.
 | §5 training corpus | ✅ PIPELINE COMPLETE — all 5 components validated end-to-end (repos 35% · synth 30% · natural 15% · agent 10% · short 10%), mixer emits train.jsonl + manifest; scale-up = runtime | `docs/phase5-corpus-plan.md`, `src/muse_longctx/corpus/`, `outputs/corpus/train_v1/` |
 | §6 position sampler | ✅ complete + selftested | `docs/phase6-position-sampler.md` |
 | §7 QLoRA trainer | 🔧 skeleton complete; `--dry-run` awaits free GPU | `docs/phase7-qlora-trainer.md` |
-| §8–§14 | ⏸ sequenced after §3/§4/§5–§7 (eval, ablations, merge/export, 5090 qualification, deliverables) | PLAN.md |
+| §8–§11, §14 | 🔧 pre-staged: §9 lora-scope (all/global/local, counts asserted), §11 staged export pipeline (merge→convert→imatrix→Q4_K_M→dflash check), §8 compare tool; §12 awaits RTX 5090 | `scripts/export_pipeline.sh`, `evals/harness/compare.py` |
 
 ## Automation currently running (GPU serial queue)
 
