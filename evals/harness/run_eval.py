@@ -29,7 +29,7 @@ COLS = ["run_id", "ts", "engine", "model", "config_label", "mode", "task",
         "target_ctx", "depth", "rep", "cell_id",
         "sampling", "prompt_tokens", "completion_tokens", "finish_reason",
         "wall_s", "ttft_s", "tok_per_s", "score", "detail",
-        "expected", "response_head", "reasoning_head", "error"]
+        "expected", "response_head", "reasoning_head", "reasoning", "error"]
 
 
 def make_row(**kw):
@@ -123,7 +123,8 @@ def main():
                             tok_per_s=round(ct / res["wall_s"], 2) if ct and res["wall_s"] else None,
                             score=s, detail=detail,
                             response_head=(res["content"] or "")[:160],
-                            reasoning_head=res.get("reasoning_head"))
+                            reasoning_head=res.get("reasoning_head"),
+                            reasoning=res.get("reasoning"))
                     except Exception as e:  # noqa: BLE001 — record, keep going
                         row.update(error=str(e)[:300])
                     with open(args.out, "a") as f:

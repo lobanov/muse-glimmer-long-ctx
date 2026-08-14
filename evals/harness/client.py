@@ -83,9 +83,11 @@ def chat(base_url, model, messages, *, mode="capability", max_tokens=4096,
                             finish = ch["finish_reason"]
             wall = time.time() - t0
             content = "".join(parts)
+            reasoning = "".join(rparts)
             return {
                 "content": content,
-                "reasoning_head": "".join(rparts)[:200],
+                "reasoning": reasoning[:4000],
+                "reasoning_head": reasoning[:200],
                 "prompt_tokens": (usage or {}).get("prompt_tokens"),
                 "completion_tokens": (usage or {}).get("completion_tokens"),
                 "finish_reason": finish,

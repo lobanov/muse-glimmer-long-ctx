@@ -17,7 +17,7 @@ SCHEMA = pa.schema([
     ("ttft_s", pa.float64()), ("tok_per_s", pa.float64()),
     ("score", pa.float64()), ("detail", pa.string()), ("expected", pa.string()),
     ("response_head", pa.string()), ("reasoning_head", pa.string()),
-    ("error", pa.string()),
+    ("reasoning", pa.string()), ("error", pa.string()),
 ])
 
 _INT = {"target_ctx", "rep", "prompt_tokens", "completion_tokens"}
