@@ -158,12 +158,15 @@ Target mixture:
 
 ### Teacher: GLM-5.2
 
-**Status (2026-08-14): BLOCKED on teacher** — no Z.ai API key in `.devcontainer/.env` (only `HF_TOKEN`).
-Escalated to the project owner; teacher generation cannot start without it. **Interim path verified
-viable**: the current HF token HAS access to `bigcode/the-stack-v2` (gated=auto, checked
-2026-08-14) — a Stack-v2-slice + short-replay corpus can be built without the Z.ai key if
-the owner approves. §6 was pulled forward (GPU-free); §7 trainer skeleton is written but
-unexercised at scale.
+**Status (2026-08-15): TEACHER OPERATIONAL — no external key needed.** Owner directive:
+run **pi itself headless as the GLM-5.2 teacher** (`pi -p`, print mode). Driver:
+`src/muse_longctx/corpus/pi_teacher.py` — cached (sha1-keyed), fully logged
+(`outputs/corpus/pi_calls.jsonl`), planted-key/JSON verification helpers, selftest PASS
+(generated doc: planted keys exactly-once, distractors absent). Earlier blockers retired:
+Z.ai key never provided; Stack v2 file access is 403 (gate not accepted — metadata access
+had been mistaken for data access). Repo assembly is GitHub-direct
+(`src/muse_longctx/corpus/github_repos.py`, validated: license gate MIT/Apache/BSD,
+exclusion fail-closed, deterministic rendering, token bucketing 32k–512k).
 
 - `zai-org/GLM-5.2` — 753B MoE (~40B active), **MIT license**, 1M-token context, 131k output, trained specifically for long-horizon coding-agent scenarios. Ideal teacher for this corpus.
 - Too large to self-host on the Spark (~380 GB even at 4-bit) → generate via **Z.ai API** (GLM-5.2 API priced same as GLM-5.1). Design for API throughput: batched templates, full caching of prompts/completions, seeds and params logged.
