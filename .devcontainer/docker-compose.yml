@@ -53,16 +53,17 @@ services:
     volumes:
       - ${CACHE_DIR:-../cache}/huggingface:/cache/huggingface
       - ${CACHE_DIR:-../cache}/weights:/cache/weights
+      - ../outputs/arms:/arms:ro   # PLAN §4 config-only zero-shot arms (symlinked weights)
       - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libcuda.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libcuda.so.1:ro
       - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ml.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ml.so.1:ro
       - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-ptxjitcompiler.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-ptxjitcompiler.so.1:ro
       - ${HOST_LIBDIR:-/usr/lib/aarch64-linux-gnu}/libnvidia-nvvm.so.${NVIDIA_DRIVER_VERSION:-580.95.05}:/usr/lib/${DEB_HOST_ARCH:-aarch64}-linux-gnu/libnvidia-nvvm.so.4:ro
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
     command: >
-      --model meta-models/Muse-Glimmer-30B
+      --model ${VLLM_MODEL:-meta-models/Muse-Glimmer-30B}
       --served-model-name muse-glimmer
       --tensor-parallel-size 1
-      --max-model-len 131072
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-131072}
       --enable-auto-tool-choice --tool-call-parser muse_glimmer
       --reasoning-parser muse_glimmer
       --generation-config auto
