@@ -34,6 +34,9 @@ def build(arm: str, base: str, out_root: str):
     tc = cfg.text_config
     if arm in QK_ARMS:
         tc.qk_scale_factor = QK_ARMS[arm]
+        # mechanical window extension (same as stock-524k): engines must ACCEPT >131k
+        # prompts; the only adaptation knob on this arm is qk_scale_factor
+        tc.max_position_embeddings = 524288
     elif arm == "yarn4":
         tc.rope_parameters = {"rope_type": "yarn", "factor": 4.0,
                               "original_max_position_embeddings": 131072,
