@@ -14,6 +14,10 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 | §5 corpus | [phase5-corpus-plan.md](phase5-corpus-plan.md) | design complete; **decision requested**: Z.ai key (Path A) or approve interim Path B |
 | §3 baseline | (in progress — `outputs/eval/stock_vllm_le128k.jsonl`, `logs/eval-stock-le128k.log`) | running; overnight + suite queues armed |
 
-Open blockers: **§5 corpus generation needs a Z.ai API key** (not in `.devcontainer/.env`;
-interim Stack-v2-slice path verified viable, awaiting owner approval); §12 on-device
-qualification awaits RTX 5090 hardware.
+| §12 deployment config | [phase12-deployment-config.md](phase12-deployment-config.md) | config complete; qualification awaits RTX 5090 |
+
+## Queued automation
+
+GPU chain: overnight (§3 grids + caveat) → suite (community suites) → stage3 (agentmem +
+PPL) → stage4 (§4 arm sweep: qk4.3/qk5.0/qk4.1/qk4.6/yarn4 × niah/semantic @ 128k–512k).
+Host-side: corpus batch (§5 scale-up) running concurrently.

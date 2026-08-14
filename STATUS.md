@@ -52,3 +52,8 @@ Last updated: 2026-08-15.
   driver launched detached (24 repos · 8 synth docs · 6 book slices · 3 agent sessions ·
   short items → serialize → remix); exclusion gate rejecting eval repos in production
   (jinja/httpx correctly skipped).
+- 2026-08-15 (cont.2): §9 lora-scope + §8 compare tool + §11 staged export pipeline
+  pre-staged; critical compose-parse fix (comments inside folded command block —
+  would have killed tonight's queue restart); stage4 §4-arm sweep armed (qk arms given
+  mechanical 524288 window); phase-12 deployment config + qualification checklist;
+  corpus repos stage done 15/25 (10 correctly rejected by license/exclusion gates).
