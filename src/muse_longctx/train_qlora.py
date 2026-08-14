@@ -86,14 +86,28 @@ def attach_lora(model, rank: int, alpha_ratio: float = 2.0, dropout: float = 0.0
 
 
 class SampleDataset(Dataset):
-    """Serialized TrainingSample rows from jsonl (one JSON object per line)."""
+    """Serialized TrainingSample rows from jsonl (one JSON object per line).
+    Rows longer than seq_bucket are dropped (logged) — genuine-length training stays
+    within the gradient-checkpointing budget (PLAN §7: train genuine at 128–256k,
+    evaluate extrapolation to 512k)."""
 
-    def __init__(self, path):
+    def __init__(self, path, seq_bucket=None):
         self.rows = []
+        dropped = []
         with open(path) as f:
             for line in f:
-                if line.strip():
-                    self.rows.append(json.loads(line))
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                if seq_bucket and len(r["input_ids"]) > seq_bucket:
+                    dropped.append(len(r["input_ids"]))
+                    continue
+                self.rows.append(r)
+        if dropped:
+            kept_toks = sum(len(r["input_ids"]) for r in self.rows)
+            print(f"[data] kept {len(self.rows)} rows ({kept_toks:,} tokens); dropped "
+                  f"{len(dropped)} rows > seq_bucket={seq_bucket:,} "
+                  f"(lens: {sorted(dropped)[:3]}...)")
 
     def __len__(self):
         return len(self.rows)
@@ -158,7 +172,7 @@ def main():
 
     from accelerate import Accelerator
     accel = Accelerator(gradient_accumulation_steps=args.grad_accum)
-    ds = SampleDataset(args.data)
+    ds = SampleDataset(args.data, seq_bucket=args.seq_bucket)
     dl = torch.utils.data.DataLoader(
         ds, batch_size=args.micro_batch, shuffle=True, collate_fn=lambda b: collate(b, pad_id))
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=args.lr)
