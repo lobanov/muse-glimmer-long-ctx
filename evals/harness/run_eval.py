@@ -67,6 +67,8 @@ def main():
     ap.add_argument("--mode", choices=["capability", "parity"], default="capability")
     ap.add_argument("--max-tokens", type=int, default=4096)
     ap.add_argument("--timeout", type=float, default=7200)
+    ap.add_argument("--plugin", default="",
+                    help="comma list of task plugins in evals/harness/ (e.g. nolima)")
     ap.add_argument("--out", required=True, help="JSONL output path (host-visible)")
     ap.add_argument("--write-parquet", action="store_true")
     ap.add_argument("--force", action="store_true", help="re-run cells already present")
@@ -79,6 +81,10 @@ def main():
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     done = set() if args.force else load_done(args.out)
     import random
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    for plug in [p.strip() for p in args.plugin.split(",") if p.strip()]:
+        mod = __import__(plug)
+        mod.register(T)
     total = len(task_list) * len(ctx_list) * len(depth_list) * args.reps
     i = 0
     for task in task_list:

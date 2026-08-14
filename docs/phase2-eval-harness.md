@@ -55,9 +55,14 @@ up (deferred until the §3 vLLM grid finishes — GPU is serial; tracked in PLAN
 - vLLM prefix caching makes later reps of a cell much faster (shared deterministic haystack
   prefix) — wall/TTFT medians within a cell underestimate cold prefill; Spark latencies are
   lower bounds for the 5090 anyway and are recorded, not gated, per PLAN §0.
-- Community suites (RULER proper, NoLiMa proper, LongBench v2, ∞Bench, HELMET,
-  LongCodeBench/LongSWE) are not yet wired: they need dataset downloads + licence checks
-  and will be integrated as additional task modules against the same schema when the §3
-  baseline establishes where synthetic tasks saturate. NoLiMa canonical dataset pinned:
-  `amodaresi/NoLiMa` (needles + haystacks; 10-hop subset of interest). The Stack v2 access
-  verified for §5 interim path (gated=auto via current token).
+## Community-suite integration
+
+**NoLiMa: integrated** (`evals/harness/nolima.py`, plugin via `--plugin nolima`). Official
+needle set (`amodaresi/NoLiMa`, 58 instances: 10 tasks × tests × {onehop, twohop}), official
+word-shuffled haystacks (10 books, ≈1.9M tokens — covers 512k targets), official
+"contains" metric and task templates; needle inserted at controllable depth; corpus
+token-fill calibrated against the Glimmer tokenizer (cached, `outputs/eval/nolima_calib.json`,
+verified 89.8–89.9% fill at 32k/256k). Canonical lengths 250–32K; ours additionally supports
+64k–512k as a labelled extension. License: Adobe Research (non-commercial research), eval-only.
+RULER / LongBench v2 / ∞Bench / HELMET / LongCodeBench / LongSWE integration: pending (dataset
+downloads + licence checks; NoLiMa pinned first as the semantic-retrieval axis).
