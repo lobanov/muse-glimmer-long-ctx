@@ -81,8 +81,8 @@ if want 3; then
     fi
     log "stage3: convert_hf_to_gguf.py (PYTHONPATH=$LLAMA_CPP/gguf-py shadows pip gguf)"
     docker exec "$DEV" bash -c "mkdir -p $WORK && env PYTHONPATH=$LLAMA_CPP/gguf-py \
-      python3 $LLAMA_CPP/convert_hf_to_gguf.py $(cpath "$MERGED") --out $BF16 \
-      --outtype bf16 --vocab-type bpe"
+      python3 $LLAMA_CPP/convert_hf_to_gguf.py $(cpath "$MERGED") --outfile $BF16 \
+      --outtype bf16"
   }
 fi
 

@@ -57,3 +57,11 @@ Last updated: 2026-08-15.
   would have killed tonight's queue restart); stage4 §4-arm sweep armed (qk arms given
   mechanical 524288 window); phase-12 deployment config + qualification checklist;
   corpus repos stage done 15/25 (10 correctly rejected by license/exclusion gates).
+- 2026-08-15 (cont.3): export-toolchain rehearsal on tiny/known models — caught & fixed:
+  --outfile (b10428 has no --out; would have failed stage 3), llama-imatrix missing from
+  image (rebuilt Dockerfile target), sentencepiece added (converter SPM path insurance);
+  verified: convert_hf_to_gguf w/ PYTHONPATH shadow → valid GGUF v3, llama-imatrix
+  produces real imatrix, quantize accepts --imatrix format. Residual (documented):
+  bf16→Q4_K_M-with-imatrix on a runtime-loadable BF16 fixture — real run uses fresh
+  convert output (well-formed) + first-class Glimmer arch; stage8 fails observably and
+  is idempotent if it still trips.

@@ -43,7 +43,7 @@ RUN cmake -B build \
       -DLLAMA_CURL=ON \
       -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build --config Release -j"$(nproc)" \
-        --target llama-server llama-cli llama-bench llama-quantize llama-gguf-split
+        --target llama-server llama-cli llama-bench llama-quantize llama-gguf-split llama-imatrix
 
 ENV PATH="/src/llama.cpp/build/bin:${PATH}"
 # sanity: binaries exist and load (driver stub satisfies libcuda.so.1 at build time;

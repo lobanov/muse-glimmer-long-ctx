@@ -21,6 +21,7 @@ dependencies = [
     "datasets>=5.0",
     "pyarrow>=25",
     "gguf>=0.17,<0.20",      # PLAN §11: convert_hf_to_gguf.py dependency (read/write GGUF metadata)
+    "sentencepiece>=0.2",     # PLAN §11: converter SPM fallback path (insurance; Glimmer is BPE-json)
 ]
 
 # flash-attn is preinstalled in the NGC base image — never pip-install over it.
