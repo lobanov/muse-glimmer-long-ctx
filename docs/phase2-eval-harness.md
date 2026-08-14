@@ -73,6 +73,15 @@ Curated deterministic subset — `infb_kv` (kv_retrieval, 500), `infb_bookmc`
 containment scoring (+ full-option-text match for book MC). Glimmer-token lengths cached:
 74k–200k → slots into the 128k/256k grid (no 512k instances exist). CC-BY-NC; eval-only.
 
+**Agentic-memory (custom, GOAL.md suite item): integrated** (`evals/harness/agentmem.py`,
+plugin via `--plugin agentmem`). Simulated coding-agent trajectory (tool calls + outputs,
+yaml/env/runbook renderings) in one prompt: 4 planted facts (host, port, key prefix,
+feature flag) in an early tool output at depth-controlled position; ~40% of later outputs
+carry shape-identical near-miss distractors; mid-trajectory nudge references facts only
+implicitly; final turn requires all four. Partial credit per fact; `pair` bonus recorded.
+Fully synthetic → contamination-safe. Fill calibrated to 84–89% (transcript ≈3.5 chars/tok,
+per-seed entry-size calibration). Selftest covers fill, distractor presence, scoring.
+
 **LongCodeQA (LCB @1M suite): integrated** (`evals/harness/longcodeqa.py`, plugin via
 `--plugin longcodeqa`). All 443 official MC instances across 6 buckets (32K/64K/128K/
 256K/512K/1M — counts match the paper table exactly: 113/76/92/65/47/50), official prompt
