@@ -64,8 +64,15 @@ word-shuffled haystacks (10 books, ≈1.9M tokens — covers 512k targets), offi
 token-fill calibrated against the Glimmer tokenizer (cached, `outputs/eval/nolima_calib.json`,
 verified 89.8–89.9% fill at 32k/256k). Canonical lengths 250–32K; ours additionally supports
 64k–512k as a labelled extension. License: Adobe Research (non-commercial research), eval-only.
-RULER / ∞Bench / HELMET / LongSWE integration: pending (dataset downloads + licence checks;
-sequenced after the §3 baseline identifies which axes synthetic tasks fail to discriminate).
+RULER / ∞Bench / HELMET / LongSWE integration: pending (LongSWE needs a test-execution
+harness — sequenced deliberately after the first end-to-end result; dataset downloads +
+licence checks for the rest).
+
+**LongCodeQA (LCB @1M suite): integrated** (`evals/harness/longcodeqa.py`, plugin via
+`--plugin longcodeqa`). All 443 official MC instances across 6 buckets (32K/64K/128K/
+256K/512K/1M — counts match the paper table exactly: 113/76/92/65/47/50), official prompt
+verbatim, `correct_letter` scoring; bucket selection maps to the largest bucket ≤ target.
+All sampled repos verified present in `data/exclusions/eval_repos.json`. MIT license.
 
 **LongBench v2: integrated** (`evals/harness/longbench_v2.py`, plugin via `--plugin
 longbench_v2`). 503 official MC instances (contexts 10k–4.3M Glimmer tokens, median 97k —
