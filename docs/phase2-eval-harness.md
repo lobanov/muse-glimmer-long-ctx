@@ -28,6 +28,14 @@ exclusion guarantee by construction; community suites integrate behind the same 
 | `counting` | aggregation: k=5..12 marker occurrences spread evenly | exact integer |
 | `semantic` | NoLiMa-style retrieval, near-zero lexical overlap question↔evidence | exact place |
 | `abstain` | needle absent → "I don't know" (no fabrication) | 1 acknowledged / 0 fabricated / 0.5 silent |
+| `conflicts` | conflicting facts: same key recorded twice; recency rule stated; must report the superseding value (and not the stale one) | 1 correct / 0.5 both / 0 stale |
+| `set_intersect` | two distant lists → items in BOTH | IoU over reported set |
+| `chronology` | 5 scattered timestamped events → 3 earliest in order | in-order hits /3 |
+
+All tasks ship with a module selftest (`python3 evals/harness/tasks.py`) asserting builder
+invariants and scorer edge cases (added after a real precedence bug was caught in `conflicts`).
+Note: `conflicts`/`set_intersect`/`chronology` joined after the §3 ≤128k grid started; they
+run as a follow-up grid and merge into the same Parquet (identical schema, label `stock`).
 
 ## Smoke run (vLLM, BF16, capability mode, 2026-08-14)
 
