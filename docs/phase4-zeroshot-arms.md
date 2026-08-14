@@ -38,7 +38,10 @@ original_max_position_embeddings: 131072, rope_theta: 500000.0}` +
 ## Validation
 
 `AutoConfig.from_pretrained` round-trip asserts per arm: qk value, rope_type, factor,
-theta=500k, max_position_embeddings (131,072 stock/qk arms; 524,288 yarn4). All pass.
+theta=500k, max_position_embeddings = **524,288 for all research arms** (yarn4 via its
+scaling config; qk arms + stock-524k via the same mechanical window extension —
+updated 2026-08-14 post-validation so every arm serves at `--max-model-len 524288`;
+the knob remains each arm's ONLY variable). All pass.
 
 ## Run plan (when §3 grid frees the GPU)
 
