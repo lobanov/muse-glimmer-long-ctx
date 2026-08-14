@@ -22,5 +22,6 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 GPU chain: overnight (§3 grids + caveat) → suite (community suites) → stage3 (agentmem +
 PPL) → stage4 (§4 arm sweep) → stage5 (dev refresh + §7 dry-run) → stage6 (§7 run1
 launch, gated) → stage7 (merge + §8 eval + regression subset + PPL) → stage8 (§11 export
-chain w/ regression guard GO/BLOCK → Q4_K_M artifact).
+chain w/ regression guard GO/BLOCK → Q4_K_M artifact) → stage9 (§11 quant-parity
+mini-suite: BF16-merged vs GGUF @128k greedy + DFlash acceptance check).
 Host-side: corpus batch (§5 scale-up) running concurrently.
