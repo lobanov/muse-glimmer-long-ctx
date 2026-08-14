@@ -86,3 +86,7 @@ Last updated: 2026-08-15.
   partial) — while niah/niah_multi/multihop stay 1.000 everywhere. First non-trivial
   baseline result: aggregation/counting is the weak axis, retrieval is robust ≤128k.
   Feeds phase-3 report + §10 (expected mode B: distractor-load, not positional).
+- counting-miss anatomy (00:52): ALL misses are exact off-by-one UNDERCOUNTS (8/9, 11/12,
+  9/10, 6/7) — systematic attention dilution (drops 1 of k markers), not random collapse
+  and not positional. Direct §10 implication: aggregation-under-distractor data +
+  global-layer focus; also the cleanest §8 regression metric for run1.
