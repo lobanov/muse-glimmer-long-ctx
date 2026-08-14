@@ -64,9 +64,14 @@ word-shuffled haystacks (10 books, ≈1.9M tokens — covers 512k targets), offi
 token-fill calibrated against the Glimmer tokenizer (cached, `outputs/eval/nolima_calib.json`,
 verified 89.8–89.9% fill at 32k/256k). Canonical lengths 250–32K; ours additionally supports
 64k–512k as a labelled extension. License: Adobe Research (non-commercial research), eval-only.
-RULER / ∞Bench / HELMET / LongSWE integration: pending (LongSWE needs a test-execution
-harness — sequenced deliberately after the first end-to-end result; dataset downloads +
-licence checks for the rest).
+RULER / HELMET / LongSWE integration: pending (LongSWE needs a test-execution harness —
+sequenced deliberately after the first end-to-end result).
+
+**∞Bench: integrated** (`evals/harness/infbench.py`, plugin via `--plugin infbench`).
+Curated deterministic subset — `infb_kv` (kv_retrieval, 500), `infb_bookmc`
+(longbook_choice_eng, 229), `infb_codedebug` (code_debug, 394) — official gold answers,
+containment scoring (+ full-option-text match for book MC). Glimmer-token lengths cached:
+74k–200k → slots into the 128k/256k grid (no 512k instances exist). CC-BY-NC; eval-only.
 
 **LongCodeQA (LCB @1M suite): integrated** (`evals/harness/longcodeqa.py`, plugin via
 `--plugin longcodeqa`). All 443 official MC instances across 6 buckets (32K/64K/128K/
