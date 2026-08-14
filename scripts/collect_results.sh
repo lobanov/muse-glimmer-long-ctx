@@ -62,7 +62,7 @@ CNT_FILES=$(ls $E/stock_vllm_*.jsonl $E/run1_vllm*.jsonl $E/abl_*.jsonl 2>/dev/n
 if [ -n "$CNT_FILES" ]; then
   echo "## counting error anatomy (off-by-one undercount = attention dilution)"
   echo '```'
-  docker exec "$DEV" python3 - $(for f in $CNT_FILES; do echo "/workspaces/muse-glimmer-long-ctx/$f"; done) <<'PY'
+  docker exec -i "$DEV" python3 - $(for f in $CNT_FILES; do echo "/workspaces/muse-glimmer-long-ctx/$f"; done) <<'PY'
 import json, re, sys
 from collections import Counter, defaultdict
 pat = re.compile(r"got (\d+) want (\d+)")
@@ -117,7 +117,7 @@ for ppl in $E/ppl_*.jsonl; do
   [ -f "$ppl" ] || continue
   echo "## PPL curve — $(basename "$ppl" .jsonl) (last-8k-token span)"
   echo '```'
-  docker exec "$DEV" python3 - "$ppl" <<'PY'
+  docker exec -i "$DEV" python3 - "$ppl" <<'PY'
 import json, sys
 rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
 rows.sort(key=lambda r: (r.get("config", ""), r.get("target_ctx", 0), r.get("rep", 0)))

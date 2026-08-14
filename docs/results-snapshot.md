@@ -1,4 +1,4 @@
-# Results snapshot — 2026-08-15 00:52:33
+# Results snapshot — 2026-08-15 00:52:52
 
 Data files present:
 - `outputs/eval/parity_caveat_vllm.jsonl` (3 rows)
@@ -49,6 +49,8 @@ rows: 219; reference ctx = 128000
 ```
 ## counting error anatomy (off-by-one undercount = attention dilution)
 ```
+stock                  ctx=  32000: exact= 20/21 under-1=1 under-N=0 over=0 other=0
+stock                  ctx=  64000: exact=  6/9 under-1=3 under-N=0 over=0 other=0
 ```
 ## §5 corpus manifest (train_v1)
 ```json
