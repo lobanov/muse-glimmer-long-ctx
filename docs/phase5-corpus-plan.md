@@ -1,8 +1,13 @@
-# Phase 5 — Training-Corpus Plan & Decision Points (PLAN §5)
+# Phase 5 — Training-Corpus Plan (PLAN §5)
 
-Status: **DESIGN COMPLETE — generation blocked on the Z.ai API key** (escalated to owner
-2026-08-14). This document is the decision basis: what is ready, what each path costs,
-what approval unblocks. Repo-scale data plumbing is required identically on both paths.
+Status: **PIPELINE COMPLETE, SCALE-UP RUNNING** (2026-08-15). **Teacher resolved by
+owner directive: run pi itself headless as the GLM-5.2 teacher** (`pi -p` print mode;
+no Z.ai key). Repo data assembles GitHub-direct (Stack v2 file access is 403 for this
+token — gate never accepted; correction recorded in PLAN.md). The Path A/B split below is
+historical; the implemented system uses pi-teacher + GitHub-direct + Gutenberg together.
+Implementation: `src/muse_longctx/corpus/` (driver + 5 generators + serialize + mixer +
+batch driver); provenance: `outputs/corpus/pi_calls.jsonl`; audit row in
+`docs/deliverables.md` #2.
 
 ## Requirements carried from PLAN §5 / GOAL.md
 
@@ -57,12 +62,12 @@ the earlier "verified viable" note mistook public metadata access for data acces
 Rate limits: unauthenticated GitHub API = 60 req/h (fine for validation); corpus-scale
 needs a `GITHUB_TOKEN` (owner) or SOCO/Software- Heritage fallback.
 
-## Decision requested from owner
+## Decision requested from owner — RESOLVED
 
-1. Provide `ZAI_API_KEY` (Path A) — or approve Path B (GitHub-direct) as the interim
-   corpus, with Path A as a later upgrade for the hardest multi-hop/agentic items.
-2. If Path B: a `GITHUB_TOKEN` for corpus-scale API budget (unauthenticated works for
-   validation); optionally accept the Stack v2 gate for richer repo coverage.
+Resolved 2026-08-15 by owner directive: the teacher is pi run headless (GLM-5.2). No
+Z.ai key needed; no Stack-v2 gate needed. Both original asks are retired. The remaining
+optional lever is a `GITHUB_TOKEN` for higher API budgets if corpus scale grows beyond
+unauthenticated limits (60 req/h) — current scale works without it (licenses cached).
 
 ## Enforcement (both paths)
 
