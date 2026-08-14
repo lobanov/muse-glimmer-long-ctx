@@ -33,8 +33,20 @@ $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
 log "merging adapter (export stage 1)"
 bash scripts/export_pipeline.sh outputs/adapters/run1 run1 --stage 1 2>&1 | tail -2 >> logs/stage7-queue.log
 [ -f outputs/merged/run1/config.json ] || { log "ERROR: merge failed"; exit 1; }
-# processor files: stage1 saves them into the merged dir already; sanity-check tokenizer
-# (dev path = /workspaces/..., NOT /outputs which is the vLLM-container mount)
+# mechanical window extension on the MERGED config (same semantics as outputs/arms/stock-524k,
+# see docs/phase4-zeroshot-arms.md): training leaves max_position_embeddings=131072, but
+# §8 evaluates at 256k/512k and vLLM caps max_model_len at the config value — without
+# this patch the 524288 serve fails at cold start. Also flows into the §11 GGUF
+# (context_length=524288) consistent with the 512k deployment artifact.
+docker exec -i "$DEV" python3 - <<'PY' >> logs/stage7-queue.log 2>&1
+import json
+p = "/workspaces/muse-glimmer-long-ctx/outputs/merged/run1/config.json"
+c = json.load(open(p))
+old = c["text_config"]["max_position_embeddings"]
+c["text_config"]["max_position_embeddings"] = 524288
+json.dump(c, open(p, "w"), indent=2)
+print(f"merged config: max_position_embeddings {old} -> 524288 (mechanical; eval+artifact)")
+PY
 docker exec "$DEV" python3 -c "
 from transformers import AutoProcessor
 p = AutoProcessor.from_pretrained('/workspaces/muse-glimmer-long-ctx/outputs/merged/run1')
