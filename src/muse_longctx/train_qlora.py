@@ -33,6 +33,20 @@ LORA_TARGET_RE = r"language_model\..*self_attn\.(q_proj|k_proj|v_proj|o_proj)"
 EXPECTED_LORA_MODULES = 52 * 4  # layers × {q,k,v,o}
 
 
+def lora_targets_for_scope(model, scope):
+    """§9 LoRA-location ablation: all | global (NoPE full-attn) | local (RoPE SWA).
+    Derived from config.layer_types — no hardcoded layer-pattern assumption."""
+    if scope == "all":
+        return LORA_TARGET_RE, 52 * 4
+    layer_types = model.config.text_config.layer_types
+    sel = [i for i, t in enumerate(layer_types)
+           if (t in ("full_attention", "global_attention")) == (scope == "global")]
+    assert sel, f"no {scope} layers found in layer_types={layer_types[:8]}..."
+    targets = [f"layers.{i}.self_attn.{p}" for i in sel
+               for p in ("q_proj", "k_proj", "v_proj", "o_proj")]
+    return targets, len(targets)
+
+
 def load_model(base_model: str, mode: str, config_override: dict | None):
     from transformers import AutoProcessor, BitsAndBytesConfig, MuseGlimmerForConditionalGeneration
     kwargs = {"dtype": torch.bfloat16}
@@ -55,15 +69,17 @@ def load_model(base_model: str, mode: str, config_override: dict | None):
     return model, processor
 
 
-def attach_lora(model, rank: int, alpha_ratio: float = 2.0, dropout: float = 0.05):
+def attach_lora(model, rank: int, alpha_ratio: float = 2.0, dropout: float = 0.05,
+                scope: str = "all"):
     from peft import LoraConfig, get_peft_model
+    targets, expected = lora_targets_for_scope(model, scope)
     cfg = LoraConfig(
         r=rank, lora_alpha=int(rank * alpha_ratio), lora_dropout=dropout,
-        bias="none", task_type="CAUSAL_LM", target_modules=LORA_TARGET_RE)
+        bias="none", task_type="CAUSAL_LM", target_modules=targets)
     model = get_peft_model(model, cfg)
     injected = [n for n, _ in model.named_modules() if ".lora_A." in n]
-    assert len(injected) == EXPECTED_LORA_MODULES, \
-        f"expected {EXPECTED_LORA_MODULES} LoRA modules, got {len(injected)} " \
+    assert len(injected) == expected, \
+        f"expected {expected} LoRA modules (scope={scope}), got {len(injected)} " \
         f"(vision leakage? names: {injected[:3]})"
     assert not any(n.startswith("vision") or ".vision_" in n for n in injected)
     return model
@@ -107,6 +123,8 @@ def main():
     ap.add_argument("--out", default="outputs/adapters/run1")
     ap.add_argument("--mode", choices=["qlora", "bf16_lora"], default="qlora")
     ap.add_argument("--lora-rank", type=int, default=32)
+    ap.add_argument("--lora-scope", choices=["all", "global", "local"], default="all",
+                    help="§9 LoRA-location ablation: all attention | global NoPE layers | local SWA layers")
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--epochs", type=float, default=1.0)
     ap.add_argument("--micro-batch", type=int, default=1)
@@ -119,7 +137,7 @@ def main():
 
     override = json.loads(args.config_override) if args.config_override else None
     model, processor = load_model(args.base_model, args.mode, override)
-    model = attach_lora(model, args.lora_rank)
+    model = attach_lora(model, args.lora_rank, scope=args.lora_scope)
     model.print_trainable_parameters()
     if hasattr(model, "gradient_checkpointing_enable"):
         model.gradient_checkpointing_enable()
