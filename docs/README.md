@@ -1,6 +1,7 @@
 # Project Docs — Muse Glimmer 30B 512k Context Adaptation
 
-Index of working artifacts. Human-oriented project docs: `GOAL.md` → `PLAN.md` → `MODEL.md`;
+Index of working artifacts. Short-form progress ledger: `STATUS.md`. Completion audit:
+`docs/deliverables.md`. Human-oriented project docs: `GOAL.md` → `PLAN.md` → `MODEL.md`;
 environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 
 | Phase | Report | Status |
