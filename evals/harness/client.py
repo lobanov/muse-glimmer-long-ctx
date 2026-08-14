@@ -22,9 +22,35 @@ def _extract_reasoning(delta):
     return r or ""
 
 
+def _fallback_body(body):
+    """Minimal body for engines that reject streaming/stream_options (llama.cpp b10428
+    compatibility): non-streaming, same sampling/template contract."""
+    b = dict(body)
+    b.pop("stream", None)
+    b.pop("stream_options", None)
+    return b
+
+
+def _parse_nonstream(r):
+    ch = r["choices"][0]
+    msg = ch.get("message", {})
+    reasoning = msg.get("reasoning_content") or msg.get("reasoning") or ""
+    usage = r.get("usage", {})
+    return {
+        "content": msg.get("content") or "",
+        "reasoning": reasoning[:4000],
+        "reasoning_head": reasoning[:200],
+        "prompt_tokens": usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
+        "finish_reason": ch.get("finish_reason"),
+    }
+
+
 def chat(base_url, model, messages, *, mode="capability", max_tokens=4096,
          seed=None, timeout=7200, retries=3):
-    """One chat completion. Returns dict; raises ChatError after `retries` failures."""
+    """One chat completion. Returns dict; raises ChatError after `retries` failures.
+    Streaming first; on HTTP 4xx (engine rejects stream/stream_options) falls back
+    once to non-streaming — llama.cpp-compat, no behavior change elsewhere."""
     if mode == "capability":
         smp = dict(temperature=1.0, top_p=0.95, top_k=64)
     elif mode == "parity":
@@ -47,14 +73,26 @@ def chat(base_url, model, messages, *, mode="capability", max_tokens=4096,
     url = base_url.rstrip("/") + "/chat/completions"
 
     last_err = None
+    fallback = False
     for attempt in range(1, retries + 1):
         t0 = time.time()
         ttft = None
         parts, rparts = [], []
         usage, finish = None, None
         try:
+            req_body = _fallback_body(body) if fallback else body
             req = urllib.request.Request(
-                url, json.dumps(body).encode(), {"Content-Type": "application/json"})
+                url, json.dumps(req_body).encode(), {"Content-Type": "application/json"})
+            if fallback:
+                r = json.load(urllib.request.urlopen(req, timeout=timeout))
+                res = _parse_nonstream(r)
+                res.update({"wall_s": round(time.time() - t0, 2), "ttft_s": None,
+                            "sampling": {**{k: body.get(k) for k in
+                                             ("temperature", "top_p", "top_k",
+                                              "max_tokens", "seed")},
+                                         "reasoning_strength": "low", "mode": mode,
+                                         "stream": False}})
+                return res
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 for raw in resp:
                     line = raw.decode("utf-8", "replace").strip()
@@ -96,6 +134,12 @@ def chat(base_url, model, messages, *, mode="capability", max_tokens=4096,
                 "sampling": {**smp, "reasoning_strength": "low",
                              "max_tokens": max_tokens, "seed": seed, "mode": mode},
             }
+        except urllib.error.HTTPError as e:
+            if not fallback and 400 <= e.code < 500:
+                fallback = True   # retry once with the minimal (non-stream) body
+                continue
+            last_err = e
+            time.sleep(min(60, 10 * attempt))
         except Exception as e:  # noqa: BLE001 — retry any transport/HTTP error
             last_err = e
             time.sleep(min(60, 10 * attempt))
