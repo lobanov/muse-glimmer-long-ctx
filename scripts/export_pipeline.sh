@@ -20,7 +20,11 @@ set -euo pipefail
 
 ADAPTER="$1"; NAME="$2"; shift 2
 STAGES="1 2 3 4 5 6 7"
-[ "${1:-}" = "--stage" ] && STAGES="$2"
+if [ "${1:-}" = "--stage" ]; then
+    # accept single (4) or comma/space lists (3,4,5,6,7 / "3 4 5")
+    STAGES=$(echo "$2" | tr ',' ' ')
+    shift 2
+fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEV=muse-glimmer-long-ctx-dev-1
 MERGED="$ROOT/outputs/merged/$NAME"
