@@ -192,3 +192,15 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   Open follow-ups: NoLiMa id-pinned variant; corpus↔eval family circularity → §8 must
   corroborate counting/cwe gains on NoLiMa/LQA/LBv2; CI-prefix caveat; export
   rehearsal (C8) queued behind grid (no schedule cost).
+- 2026-08-15 16:40 PLAN-ALIGNMENT (owner commit 4c875bc): §4 arms officially repurposed to
+  zero-training treatment for criterion 7 (extrapolation rescue dead — stock 1.000 to
+  512k). stage4 → v2.1: weak-axis primary grids (counting/cwe/nolima @128k+256k ×5,
+  cell-seed-PAIRED vs stock — NoLiMa instances deterministic per cell so paired reads
+  are valid; cross-length trends still are not), niah@64k harm check, 512k extension
+  only on ≥+10pt paired signal, qk bracket {4.3,5.0}, yarn4 control now includes
+  weak-axis cells (can falsify the inertness prediction). If a qk arm fixes weak axes
+  harmlessly → deployment artifact = stock weights + config re-convert (no LoRA/merge —
+  cheapest §11 path); else §7 training carries criterion 7 (approval-gated stage6-v2).
+  PLAN §4 text erratum applied (12/17 k−1, not "every" off-by-one). First decision data
+  landing: counting@192k = 0.0 (2 cells) — weak axis confirmed beyond nominal.
+  e2 forensics: 1/34 rows so far. All 10 watchers verified.
