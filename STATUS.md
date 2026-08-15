@@ -107,3 +107,9 @@ Last updated: 2026-08-15.
   fixed live (semantic article) — 63/63 re-scored hit, flagged rescored. vLLM @524288
   on stock-524k serving (window fix validated live); >128k grid started — first cell
   niah@192k = 1.0 hit @173k prompt tokens.
+- 2026-08-15 04:21: cwe task added (RULER-style aggregation — extends measured weak axis).
+  NOTE for next session: cwe is in NO armed grid (their task lists are baked; scripts are
+  mid-flight — do not edit). Follow-up when GPU serves stock-524k again: run
+  `run_eval.py --tasks cwe --ctx 32000,64000,128000,256000 --depths 0,0.5,1.0 --reps 3`
+  for stock; and add the same grid for run1 during §8 (stage7's standard grid predates
+  cwe). Live: niah@256k 3/3 perfect so far.
