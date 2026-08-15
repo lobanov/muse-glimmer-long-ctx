@@ -142,6 +142,46 @@ Rationale for "control" status: with θ = 500k and a 2,048-token window, RoPE in
 
 Run the full baseline evaluation for both arms. Compare: **stock vs qk-scale sweep vs YaRN-4**. This isolates benefit or harm from each mechanism before any training.
 
+### REVISION (2026-08-15, from §3 >128k interim evidence — decision recorded before arm runs)
+
+**Evidence.** Stock with the *mechanical window extension only* (`stock-524k`: no knob
+changed — qk=3.87, rope untouched; NoPE layers take no positions, SWA RoPE ≤ 2048 rel.)
+scores **1.000 (n=9/cell, all depths incl. 0%/100%)** on niah, semantic, and multihop at
+192k/256k/384k/512k (multihop 512k partial). Extrapolation rescue is therefore a **dead
+hypothesis**: there is nothing for the arms to fix on saturated retrieval/reasoning axes,
+and §3's ≥85%-retention rule is already met on every completed retrieval column.
+
+**Repurposing.** The arms are no longer extrapolation rescue. GOAL criterion 7 ("materially
+better long-context results than stock at the same length") is absolute, and stock's
+measured weak axes are below ceiling *within and beyond* the native window:
+- counting: 0.952 → 0.476 (32k→128k), every miss an exact off-by-one undercount
+  (attention dilution — the §4a mechanism this knob directly targets);
+- cwe (comparative aggregation): 0.778 @32k, wrong-word errors;
+- official NoLiMa: 0.222 @384k, 0.50 @512k (partial) — semantic retrieval genuinely
+  weakens at range.
+So §4 is now the **zero-training treatment arm** for criterion 7: if a qk value fixes the
+weak axes without harming the saturated ones, the deployment artifact is *stock weights
+re-converted with a new config value* — no LoRA, no merge (cheapest path to §11). If no
+arm moves them, §7 training carries criterion 7 alone.
+
+**Scope trim (evidence-driven; refine only on signal).**
+- qk arms bracketed: **4.3 (mid) and 5.0 (aggressive)**; 4.1/4.6 dropped unless the
+  bracket suggests an interior optimum.
+- YaRN-4 retained as the §4b control (still expected near-inert; cheap).
+- Primary metrics: **counting, cwe, NoLiMa** (weak axes). Saturated tasks dropped except
+  one harm check (niah @64k) — an arm that gains counting but loses retrieval is worse
+  than useless.
+- Contexts: 128k/256k primary (dilution already measurable; cheaper cells), 512k only if
+  an arm shows signal. Depths: 0.5 primary, edges for the winner's confirmation run.
+- Implemented as `stage4_queue.sh` v2 (counting,cwe @128k–512k ×5 reps + harm check);
+  NoLiMa/YaRN grids to be appended to that queue when GPU frees (they share the restarts).
+
+**Decision implications.** Stock's >128k extrapolation also means §7's training value must
+come from the weak axes (and ≤128k robustness), not from enabling length — the corpus and
+§8 comparison already target exactly that (aggregation-heavy synth docs, cwe/counting in
+the §8 grid). Final §3 call (and the formal pivot note) awaits the counting/cwe/abstain/
+niah_multi >128k columns now filling.
+
 ---
 
 ## 5. Prepare the Training Corpus
