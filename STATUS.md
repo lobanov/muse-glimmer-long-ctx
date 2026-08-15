@@ -222,3 +222,7 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   NET: mechanism picture = mixed retrieval-undercount (dominant, enumeration-resistant)
   + decode variance (minor). qk hypothesis remains the live causal test (§4 v2.1).
   phase-3/PLAN language already downgraded — consistent with this.
+- cwe grid COMPLETE (22:58): 0.778@32k / 0.889@64k / 0.889@128k / 0.778@256k (n=9) —
+  non-monotone (shallow dip at 32k, recovery, decline at 256k), clearly NOT a length
+  cliff; consistent with difficulty-driven errors, not context-collapse. §4 sweep's
+  cwe@128k/256k cells pair directly against these stock values.
