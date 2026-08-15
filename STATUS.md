@@ -113,3 +113,9 @@ Last updated: 2026-08-15.
   `run_eval.py --tasks cwe --ctx 32000,64000,128000,256000 --depths 0,0.5,1.0 --reps 3`
   for stock; and add the same grid for run1 during §8 (stage7's standard grid predates
   cwe). Live: niah@256k 3/3 perfect so far.
+- 2026-08-15 04:35: agent-component expansion attempted over 8 fact-bearing repos:
+  +2 sessions (fd, aiohttp earlier) → 7 rows; Go/Rust code trees lack unique version
+  facts (duplicated across modules) — extractor ceiling reached at ~2.7% vs 10% target.
+  Accepted + documented (mixer records actuals); v2 options: synthetic-trajectory
+  augmentation or a context-signature fact extractor, only if §8 diagnostics flag the
+  agentmem axis as limiting. Corpus v1.1 final: 259 raw / 174 visible @131072.
