@@ -164,3 +164,7 @@ capability contract, zero truncations, zero transport errors):
 - live (12:25): multihop@256k 1.000 (3/3, 232k-ptok prompts) — 2-hop reasoning ALSO
   holds zero-shot at 2x nominal. gt128k 90/216 (semantic+niah columns complete at
   1.000; multihop running), nolima 42/54, cwe 7/36. All watchers verified.
+- live (14:51): multihop@512k 1.000 first cells (463k-ptok prompts) — 2-hop reasoning
+  extrapolates zero-shot to 4x nominal. gt128k 100/216 (niah/semantic/multihop columns
+  effectively complete at 1.000; abstain+counting+niah_multi remain), nolima 48/54,
+  cwe 12/36 (@64k cells running).
