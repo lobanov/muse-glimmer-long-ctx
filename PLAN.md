@@ -154,8 +154,9 @@ and §3's ≥85%-retention rule is already met on every completed retrieval colu
 **Repurposing.** The arms are no longer extrapolation rescue. GOAL criterion 7 ("materially
 better long-context results than stock at the same length") is absolute, and stock's
 measured weak axes are below ceiling *within and beyond* the native window:
-- counting: 0.952 → 0.476 (32k→128k), every miss an exact off-by-one undercount
-  (attention dilution — the §4a mechanism this knob directly targets);
+- counting: 0.952 → 0.476 (32k→128k), undercount-biased errors (12/17 are k−1; one
+  over-count) — attention dilution the leading hypothesis (§4a mechanism this knob
+  directly targets; E2 forensics pending);
 - cwe (comparative aggregation): 0.778 @32k, wrong-word errors;
 - official NoLiMa: 0.222 @384k, 0.50 @512k (partial) — semantic retrieval genuinely
   weakens at range.
