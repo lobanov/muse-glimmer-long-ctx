@@ -204,3 +204,8 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   PLAN §4 text erratum applied (12/17 k−1, not "every" off-by-one). First decision data
   landing: counting@192k = 0.0 (2 cells) — weak axis confirmed beyond nominal.
   e2 forensics: 1/34 rows so far. All 10 watchers verified.
+- E2 forensics interim (17:30, 3 miss-instances × 2 conds): greedy REPRODUCES the misses
+  (not sampling noise) and explicit enumeration does NOT fix them → evidence AGAINST
+  decode-strategy hypothesis, FOR retrieval/attention (dilution). Sharpest case:
+  want 12, model enumerated 11 entries then answered 9 — one marker never surfaced.
+  Caveat: n=3 pairs, enum-token-counting is crude; full 34-row run continues.
