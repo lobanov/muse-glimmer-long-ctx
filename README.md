@@ -7,6 +7,22 @@ reasoning over distant evidence, repo-scale coding at 256k–512k, no material �
 regression, and materially better than stock at equal length. Train on the DGX Spark;
 deploy on an RTX 5090.
 
+## Background
+
+Glimmer mixes two attention regimes per 4-layer block: three **local sliding-window
+layers** (2,048-token window, RoPE with θ=500,000) and one **global full-attention layer
+with NoPE** — no positional encoding at all. Because the local layers never attend beyond
+~2k relative distance, their RoPE never operates far from its training regime; and
+because the global layers are NoPE, they have *no* position-dependent frequencies to
+break. Positional extrapolation — the thing that normally kills naive long-context
+extension — is therefore largely absent by construction, and the real burden falls on the
+global layers' ability to keep selecting relevant evidence as distractor count grows
+(they still see all 512k tokens). This is exactly why the baseline finds perfect retrieval
+to 512k but degrading aggregation. The mechanical extension itself is one config value:
+`text_config.max_position_embeddings: 131072 → 524288` — a window admission change, not a
+math change — which lets engines serve beyond 128k without touching any weights
+(`outputs/arms/stock-524k`).
+
 ## Approach
 
 1. **Measure before adapting.** A single eval harness (10 synthetic tasks + NoLiMa,
