@@ -75,10 +75,52 @@ const GRIDS = [
   { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 216 },
 ];
 
+/* ETA from per-row timestamps (each JSONL row carries `ts`, naive UTC from the
+ * container). Parse as UTC explicitly (append Z) or JS treats it as local time.
+ * Rate = rows completed in the recent window; remaining / rate. Grids share the GPU,
+ * so ETAs are upper-ish bounds that tighten as lanes drain. */
+const parseTs = (s) => {
+  if (!s) return 0;
+  return Date.parse(/[Zz]$|[+-]\d\d:?\d\d$/.test(s) ? s : s + "Z");
+};
+function etaFor(file, rows, total, now, runnerAlive) {
+  if (rows.length === 0 || rows.length >= total) return null;
+  const ts = rows.map((r) => parseTs(r.ts)).filter(Boolean).sort((a, b) => a - b);
+  if (ts.length < 2) return { eta: "…", rate: 0 };
+  const W = 60 * 60 * 1000;                       // recent window: 60 min
+  const t0 = Math.max(ts[0], now - W), t1 = ts[ts.length - 1];
+  const inWin = ts.filter((t) => t >= t0).length;
+  if (inWin >= 2 && t1 > t0) {
+    const rate = inWin / ((Math.min(t1, now) - t0) / 1000);
+    const remain = (total - rows.length) / rate;
+    const h = Math.floor(remain / 3600), m = Math.round((remain % 3600) / 60);
+    return { eta: (h ? h + "h" : "") + m + "m", rate,
+             done: new Date(now + remain * 1000) };
+  }
+  // too few recent completions to estimate a rate (long cells are normal at 128k+:
+  // single cells legitimately run 45–90 min while lanes share the GPU)
+  const age = now - t1;
+  if (age > 45 * 60 * 1000)
+    return runnerAlive ? { eta: "in flight", rate: 0 }
+                       : { eta: "stalled?", rate: 0 };
+  return { eta: "…", rate: 0 };
+}
+
 app.get("/api/status", async (req, res) => {
+  const now = Date.now();
+  // runner-aliveness per grid (by output filename in the process cmdline)
+  const alive = {};
+  for (const g of GRIDS) {
+    if (!fs.existsSync(path.join(EVAL, g.file))) continue;
+    const r = await probe("docker", ["exec", DEV, "pgrep", "-f", `run_eval.py.*${g.file}`]);
+    alive[g.file] = r.ok && r.out.length > 0;
+  }
   const grids = GRIDS.map((g) => {
     const p = path.join(EVAL, g.file);
-    return { ...g, rows: readJSONL(p).length, exists: fs.existsSync(p), mtime: mtime(p) };
+    const rows = readJSONL(p);
+    return { ...g, rows: rows.length, exists: fs.existsSync(p), mtime: mtime(p),
+             runner: alive[g.file] || false,
+             ...(etaFor(g.file, rows, g.total, now, alive[g.file]) || {}) };
   });
   const watchers = {};
   for (const w of WATCHERS) {

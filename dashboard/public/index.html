@@ -69,9 +69,13 @@ async function refresh() {
 
   $("grids").innerHTML = S.grids.map(g => {
     const p = pct(g.rows, g.total);
+    const done = g.rows >= g.total;
+    const eta = done ? `<span class="ok">complete</span>`
+      : g.rows === 0 ? `<span class="off">not started</span>`
+      : `<span class="${g.eta === "stalled?" ? "err" : "warn"}">ETA ${g.eta || "…"}${g.done ? " · ~" + new Date(g.done).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : ""}${g.runner ? " · running" : ""}</span>`;
     return `<tr><td>${g.name}</td>
       <td><span class="bar"><i style="width:${p}%"></i></span>${g.rows}/${g.total} (${p}%)</td>
-      <td>${g.exists ? "" : "<span class='off'>not started</span>"}</td></tr>`;
+      <td>${eta}</td></tr>`;
   }).join("");
 
   $("pipe").innerHTML = Object.entries(S.markers).map(([m, v]) => {
