@@ -2,7 +2,38 @@
 
 Short-form progress ledger, updated as phases progress. Detail lives in `docs/` (per-phase
 reports); decisions and results of record live in `PLAN.md`/`CONTRIBUTING.md`.
-Last updated: 2026-08-15.
+Last updated: 2026-08-15 09:30.
+
+## Interim results (as of 2026-08-15 09:23; interim = grids still filling)
+
+**§3 stock baseline — the defining finding so far** (n=21/cell ≤128k, n=9/cell >128k,
+capability contract, zero truncations, zero transport errors):
+
+| task | 32k | 64k | 128k | 192k | 256k | 384k | 512k |
+|---|---|---|---|---|---|---|---|
+| niah | 1.000 | 1.000 | 1.000 | **1.000** | **1.000** | **1.000** | **1.000** |
+| semantic (NoLiMa-style) | 1.000 | 1.000 | 1.000 | **1.000** | **1.000** | **1.000** | 1.000³ |
+| niah_multi | 1.000 | 1.000 | 1.000 | queued | queued | queued | queued |
+| multihop | 1.000 | 1.000 | 1.000 | queued | queued | queued | queued |
+| abstain | 1.000 | 1.000 | 1.000 | queued | queued | queued | queued |
+| counting | 0.952 | 0.762 | 0.476 | queued | queued | queued | queued |
+
+¹ complete cells (378/378, `docs/phase3-stock-baseline.md`) · ² >128k grid 66/216 in flight
+³ partial (3/3 so far @463k-token prompts)
+
+- **Stock Glimmer retrieves perfectly zero-shot at 4× nominal context** (every depth incl.
+  0%/100%). Decision rule (≥85% retention on retrieval) trending "training optional /
+  targeted" → project pivots toward PLAN's strengthen-qualify-deploy branch; counting
+  (>128k cells queued) is the axis that decides whether adaptation is still needed.
+- **Counting = sole degradation axis ≤128k** (0.952→0.476), every miss an exact
+  **off-by-one undercount** — systematic attention dilution on the 13 NoPE-global layers,
+  exactly PLAN §10's mode B and the §4a qk-scale target. Position-insensitive otherwise.
+- **Official NoLiMa suite (31/54)**: 0.444 / 0.556 / 0.444 @32/64/128k, 0.750 @256k(partial)
+  — hard semantic benchmark behaving per its leaderboard (~50–70% for best models);
+  a genuine difficulty axis our synthetic tasks don't saturate.
+- **§0 caveat CLOSED**: K-Quant GGUF 3/3 at 128k/90% under the low-reasoning contract.
+- Scoring integrity: one scorer bug (semantic leading-article) caught + fixed live; 63
+  cells re-scored from stored responses, flagged `rescored`; scorer validated on 63/63.
 
 ## Phase status (PLAN.md numbering)
 
