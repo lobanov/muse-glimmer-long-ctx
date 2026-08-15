@@ -158,8 +158,9 @@ measured weak axes are below ceiling *within and beyond* the native window:
   over-count) — attention dilution the leading hypothesis (§4a mechanism this knob
   directly targets; E2 forensics pending);
 - cwe (comparative aggregation): 0.778 @32k, wrong-word errors;
-- official NoLiMa: 0.222 @384k, 0.50 @512k (partial) — semantic retrieval genuinely
-  weakens at range.
+- official NoLiMa: 0.222 @384k, 0.444 @512k (n=9, complete) — per-length difficulty
+  (instances differ per length; non-monotone: 0.44/0.56/0.44/0.67/0.22/0.44), not a
+  clean range trend.
 So §4 is now the **zero-training treatment arm** for criterion 7: if a qk value fixes the
 weak axes without harming the saturated ones, the deployment artifact is *stock weights
 re-converted with a new config value* — no LoRA, no merge (cheapest path to §11). If no

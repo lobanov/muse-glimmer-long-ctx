@@ -9,8 +9,13 @@ same markers) under three conditions:
              count") — if this FIXES misses, the failure is decode/working-memory
              strategy, not attention retrieval (dilution hypothesis falsified)
 
-Verdict rule (printed): dilution-live if greedy persists AND enum does NOT fix;
-decode-strategy if enum fixes >= 2/3 of greedy misses; inconclusive otherwise.
+Verdict rule (3-way, audit 2026-08-15):
+  sampling-share   : fraction of capability misses that flip correct under greedy
+                     (measures stochastic component — E2 full run: 5/17 flipped)
+  systematic-decode: enum fixes >= 2/3 of the greedy-persistent misses
+  attention/retrieval: greedy-persistent AND enumeration-resistant
+The printed single-line verdict is a coarse summary; read the paired anatomy table
+(STATUS) for the actual split.
 
 Usage (dev container, vLLM serving):
   python3 evals/harness/e2_forensics.py --base-url http://vllm:8000/v1 \

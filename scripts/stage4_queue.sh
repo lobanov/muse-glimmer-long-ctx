@@ -57,15 +57,25 @@ s = cells("stock", glob.glob("outputs/eval/stock_vllm_le128k.jsonl") +
           glob.glob("outputs/eval/stock_cwe.jsonl"))
 a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
 signal = False
+# NOTE (audit 2026-08-15): stock rows have 3 reps/cell -> per-task pairs max at 6
+# (2 ctx x 3 reps); the old `len(pairs) >= 10` made this branch UNREACHABLE. Now pooled
+# across counting+cwe with a floor of 5 pairs; per-task and pooled deltas both logged.
+allpairs = []
 for task in ("counting", "cwe"):
     pairs = [(v, s[k]) for k, v in a.items()
              if k[0] == task and k[1] in (128000, 256000) and k in s]
-    if len(pairs) >= 10:
+    allpairs += pairs
+    if len(pairs) >= 3:
         am = sum(p[0] for p in pairs)/len(pairs); sm = sum(p[1] for p in pairs)/len(pairs)
-        if am - sm >= 0.10:
-            signal = True
-            print(f"  [{arm}] {task}: paired {am:.3f} vs stock {sm:.3f} "
-                  f"({(am-sm)*100:+.1f} pts, n={len(pairs)})", file=sys.stderr)
+        print(f"  [{arm}] {task}: paired {am:.3f} vs stock {sm:.3f} "
+              f"({(am-sm)*100:+.1f} pts, n={len(pairs)})", file=sys.stderr)
+if len(allpairs) >= 5:
+    am = sum(p[0] for p in allpairs)/len(allpairs)
+    sm = sum(p[1] for p in allpairs)/len(allpairs)
+    if am - sm >= 0.10:
+        signal = True
+        print(f"  [{arm}] POOLED: {am:.3f} vs {sm:.3f} ({(am-sm)*100:+.1f} pts, "
+              f"n={len(allpairs)}) -> signal", file=sys.stderr)
 print("yes" if signal else "no")
 PY
 }

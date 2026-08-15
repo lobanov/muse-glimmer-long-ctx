@@ -53,10 +53,12 @@ RAM and excluded. Extrapolation: 1M F16 ≈ 30 GB (borderline), 1M Q8_0 ≈ 23 G
 ## Gate 3 — iSWA verification, PASSED
 
 llama.cpp logs (`--swa-full` NOT set) show the 39 sliding-window layers getting a
-window-sized cache — **2,560 cells / 97.50 MiB F16 (51.80 MiB Q8_0)** — constant across all
+window-sized cache — **2,560 cells / 97.50 MiB F16 (51.80 MiB Q8_0; = 2,048 + 25% allocator
+padding, llama.cpp's `swa-full`-free default)** — constant across all
 context sizes; only the 13 global layers scale with context. Model metadata confirmed:
-`sliding_window = 2048`, `sliding_window_pattern` alternating 2 SWA : 1 global across 52
-layers, `freq_base_swa = 500000` (RoPE only on SWA layers).
+`sliding_window = 2048`, `sliding_window_pattern` = **3 SWA : 1 global repeating** across 52
+layers (39/13; erratum 2026-08-15 — earlier text said "2:1", arithmetically impossible
+for 39/13 and inconsistent with MODEL.md/config), `freq_base_swa = 500000` (RoPE only on SWA layers).
 
 ## Deferred (awaits RTX 5090 hardware — moved to PLAN §12)
 

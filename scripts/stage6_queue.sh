@@ -56,7 +56,7 @@ def cells(label, files):
             d[(r["task"], r["target_ctx"])].append(r["score"])
     return d
 stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
-for arm in ("qk4.1", "qk4.3", "qk4.6", "qk5.0"):
+for arm in ("qk4.3", "qk5.0"):
     a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
     pooled_a, pooled_s = [], []
     percell = []
@@ -95,7 +95,7 @@ def cells(label, files):
             d[(r["task"], r["target_ctx"])].append(r["score"])
     return d
 stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
-for arm in ("qk4.3", "qk5.0", "qk4.1", "qk4.6"):
+for arm in ("qk4.3", "qk5.0"):
     a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
     wins = 0
     for k, xs in a.items():

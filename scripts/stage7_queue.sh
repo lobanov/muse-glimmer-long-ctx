@@ -6,10 +6,11 @@
 # Then:
 #   1. merge adapter → outputs/merged/run1 (export_pipeline stage 1; idempotent)
 #   2. serve merged on vLLM @524288 (VLLM_MODEL=/outputs/merged/run1)
-#   3. §8 grid — same decision subset as stage4 + regression check:
-#        niah, semantic, multihop, abstain @ 128k/256k/512k × {0,0.5,1.0} × 3 reps
+#   3. §8 grid — weak axes + regression check (stage4-v2.1-aligned):
+#        counting, cwe, multihop, abstain, niah @ 128k/256k/512k × {0,0.5,1.0} × 3 reps
 #        config_label=run1  (compare.py diffs vs stock + arms automatically)
-#      plus ≤32k short-regression cells (niah, semantic @ 32k × 3)
+#      plus ≤32k short-regression cells (niah, semantic, counting, CWE @ 32k × 3) —
+#      cwe@32k added 2026-08-15 audit: sharpest short-context discriminator (0.778)
 #   4. PPL probe on merged (32k..524k, 2 reps)
 # Marker: logs/stage7-queue.done
 set -uo pipefail
@@ -74,7 +75,7 @@ docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     >> logs/stage7-grid.log 2>&1 || log "WARN: run1 grid partial (data kept)"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
-    --config-label run1 --tasks niah,semantic,multihop,abstain,counting \
+    --config-label run1 --tasks niah,semantic,multihop,abstain,counting,cwe \
     --ctx 32000 --depths 0.0,0.5,1.0 --reps 3 \
     --mode capability --max-tokens 4096 \
     --out outputs/eval/run1_vllm_short.jsonl" \

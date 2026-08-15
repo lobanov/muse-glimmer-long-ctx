@@ -4,44 +4,42 @@ Short-form progress ledger, updated as phases progress. Detail lives in `docs/` 
 reports); decisions and results of record live in `PLAN.md`/`CONTRIBUTING.md`.
 Last updated: 2026-08-15 15:24.
 
-## Interim results (updated 2026-08-15 15:24; grids still filling — n<9 = partial)
+## Interim results (REGENERATED from disk 2026-08-15 23:40 — computed, not hand-typed;
+per-cell n in parens; n<9 = partial; — = queued)
 
-**§3 stock baseline — the defining finding so far** (capability contract, zero truncations,
-zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
+**§3 stock baseline** (capability contract, zero truncations, zero transport errors):
 
 | task | 32k | 64k | 128k | 192k | 256k | 384k | 512k |
 |---|---|---|---|---|---|---|---|
-| niah | 1.000 | 1.000 | 1.000 | **1.000** | **1.000** | **1.000** | **1.000** |
-| semantic (NoLiMa-style) | 1.000 | 1.000 | 1.000 | **1.000** | **1.000** | **1.000** | **1.000** |
-| multihop (2-hop) | 1.000 | 1.000 | 1.000 | **1.000** | **1.000** | **1.000** | 1.000² |
-| niah_multi | 1.000 | 1.000 | 1.000 | queued | queued | queued | queued |
-| abstain | 1.000 | 1.000 | 1.000 | queued | queued | queued | queued |
-| counting | 0.952 | 0.762 | 0.476 | queued | queued | queued | queued |
-| cwe (8-word freq compare) | 0.778 | 1.000² | — | — | queued | — | — |
-
-¹ ≤128k complete (378/378, `docs/phase3-stock-baseline.md`) · ² partial
+| niah | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
+| semantic (NoLiMa-style) | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
+| multihop (2-hop) | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(5) |
+| niah_multi | 1.000(21) | 1.000(21) | 1.000(21) | — | — | — | — |
+| abstain | 1.000(21) | 1.000(21) | 1.000(21) | — | — | — | — |
+| counting | 0.952(21) | 0.762(21) | 0.476(21) | 0.667(9) | 0.667(9) | 0.667(9) | 0.500(4) |
+| cwe (8-word freq compare) | 0.778(9) | 0.889(9) | 0.889(9) | — | 0.778(9) | — | — |
+| official NoLiMa | 0.444(9) | 0.556(9) | 0.444(9) | — | 0.667(9) | 0.222(9) | 0.444(9) |
 
 - **Stock Glimmer retrieves AND 2-hop-reasons perfectly zero-shot at 4× nominal context**
-  (every depth incl. 0%/100%, up to 463k-token prompts). Decision rule (≥85% retrieval
-  retention) already met on completed columns → project pivots to PLAN's
-  strengthen-qualify-deploy branch; the queued counting/cwe >128k columns decide whether
-  adaptation still adds material value on the weak axis.
-- **Counting = sole degradation axis ≤128k** (0.952→0.476), every miss an exact
-  **undercount-biased errors** — consistent with attention dilution on the 13 NoPE-global
-  layers as ONE live hypothesis (enumeration/decode-arithmetic slips unexcluded — E2
-  forensics running; see docs/review-glm53-verification.md)
-  (PLAN §10 mode B; the §4a qk-scale target). cwe (harder aggregation: compare counts
-  across 8 candidates) sits at 0.778 @32k — discriminates at SHORT context with
-  wrong-word errors, a sharper §8 instrument than counting.
-- **Official NoLiMa suite (49/54)**: 0.444 / 0.556 / 0.444 / 0.667 / 0.222 / 0.750² at
-  32k/64k/128k/256k/384k/512k — hard semantic benchmark, non-monotone with length (its
-  instances differ per length; leaderboard models score 50–70% short). A genuine
-  difficulty axis our synthetic tasks don't saturate; the natural §8 target.
+  (every depth incl. 0%/100%, up to 463k-token prompts). §3's ≥85%-retention rule is
+  met on every completed retrieval column → strengthen-qualify-deploy pivot stands;
+  **GOAL criterion 7 now hinges entirely on the weak axes.**
+- **Weak-axis picture (ERRATUM 2026-08-15/23:40, audit-verified — replaces earlier
+  narrative): counting/cwe = aggregation fragility: k-difficulty-dependent (k=5: 1.00 →
+  k=12: 0.33), partly stochastic (E2: greedy fixed 5/17 capability misses), NO clean
+  length trend beyond 128k (0.667 flat 192–384k, vs 0.476@128k — non-monotone; k-drift
+  confound documented). "Attention dilution" is DOWNGRADED to one unconfirmed
+  hypothesis — §4a is hypothesis exploration ("does attention sharpening move
+  aggregation scores at all?"), not mechanism-targeted treatment.** E2 paired anatomy:
+  11/17 misses enumeration-resistant (retrieval-side component real); k-matched grid
+  (strata k=6/11, capability+greedy) running to de-confound length from difficulty.
+- NoLiMa non-monotone (0.44/0.56/0.44/0.67/0.22/0.44) — instances differ per length;
+  treat as per-length difficulty, not a trend. Corroborator suites at n=3/cell (LBv2/LQA)
+  cannot detect <~50pt effects — powering decision pending (audit F6).
 - **§0 caveat CLOSED**: K-Quant GGUF 3/3 at 128k/90% under the low-reasoning contract.
-- Scoring integrity: one scorer bug (semantic leading-article) caught + fixed live; 63
-  cells re-scored from stored responses, flagged `rescored` (63/63 verified).
-- Progress when last checked: gt128k 101/216 · cwe 13/36 · nolima 49/54; chains armed
-  (§4 sweep → §7 gated training → §8 → §11 export → parity) — see runbook below.
+- Scoring integrity: semantic leading-article scorer bug caught + fixed live (63 cells
+  re-scored, flagged); counting-miss-anatomy and E2 claims errata'd twice as data
+  landed — numbers in this table are computed from disk.
 
 ## Phase status (PLAN.md numbering)
 
@@ -52,7 +50,7 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
 | §2 eval harness | ✅ core + NoLiMa + LongBench v2 + LongCodeQA + ∞Bench + custom agentmem; RULER-official/HELMET/LongSWE deferred by design | `docs/phase2-eval-harness.md` |
 | §3 stock baseline | 🔄 ≤128k **COMPLETE** (report: docs/phase3-stock-baseline.md — 5/6 tasks 1.000, counting sole axis 0.95→0.48); >128k grid running; §0 caveat closed | `docs/phase3-stock-baseline.md` |
 | §4 zero-shot arms | 🔧 arms built & validated (qk 4.1/4.3/4.6/5.0, yarn4, stock-524k); GGUF-metadata spike answered; runs queued behind §3 | `docs/phase4-zeroshot-arms.md`, `outputs/arms/` |
-| §5 training corpus | ✅ **v1 BUILT**: 173 rows / 31.5M tokens genuine-length (repos 34.7% · synth 34.1% · natural 16.2% · short 11.6% · agent 3.5% honest shortfall); pi-headless teacher; stage6 G3 gate PASS
+| §5 training corpus | ✅ **v1.1 final**: 259 raw / 174 trainer-visible @131072 / 10.87M visible tokens (repos ~31% · synth 34% · natural 20% · short 12% · agent 2.7% honest shortfall); pi-headless teacher; bucket-aware G3 PASS |
 | §6 position sampler | ✅ complete + selftested | `docs/phase6-position-sampler.md` |
 | §7 QLoRA trainer | 🔧 skeleton complete; `--dry-run` awaits free GPU | `docs/phase7-qlora-trainer.md` |
 | §8–§11, §14 | 🔧 pre-staged & armed: §8 auto-eval (stage7), §9 ablate.sh (location/rank arms, one command), §10 diagnose.py (failure-mode classifier → recommended actions), §11 export chain (stage8, regression-guarded); §12 awaits RTX 5090 | `scripts/ablate.sh`, `evals/harness/diagnose.py`, `scripts/export_pipeline.sh` |
@@ -226,3 +224,21 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   non-monotone (shallow dip at 32k, recovery, decline at 256k), clearly NOT a length
   cliff; consistent with difficulty-driven errors, not context-collapse. §4 sweep's
   cwe@128k/256k cells pair directly against these stock values.
+- 2026-08-15 23:50 AUDIT ACTIONS (independent review, verified then actioned):
+  (F4 FIXED) stage4 weak_signal was dead code — per-task `len(pairs)>=10` unreachable
+  (stock has 3 reps → max 6 pairs); now pooled counting+cwe, floor 5, both deltas
+  logged; watcher replaced. (F3) k-matched counting grid LAUNCHED (strata k=6/11 ×
+  32k-256k × 5 reps × capability+greedy; builder verified 20 seeds — marker stem
+  collision with question found+fixed). (F1/F2/F5 ERRATA) interim table REGENERATED
+  from disk (no more hand-typed cells): counting non-monotone >128k (0.667 flat
+  192-384k vs 0.476@128k), E2 headline corrected (greedy fixed 5/17 — ~30% sampling
+  share; 11/17 enumeration-resistant), nolima@512k=0.444(n=9), cwe@64k=0.889,
+  counting@192k "0.0 (2 cells)" flash-read superseded. §5 row → v1.1 final numbers.
+  (minor) phase0 3:1 pattern erratum + 25% padding note; stage6 winner lists →
+  bracket {4.3,5.0}; stage7 short-regression +cwe@32k, header corrected; PLAN
+  nolima number fixed. (F6 PENDING) corroborator powering decision (LBv2/LQA 10-15
+  draws at 128/256k vs downgrade claim) — queued with the train1 approval evidence.
+  Mechanism reframed everywhere: aggregation fragility (k-dependent, partly
+  stochastic, no clean length trend); §4a = hypothesis exploration. E2 verdict rule
+  now 3-way. train1 stays approval-gated; approval evidence = k-matched grid +
+  E2-complete + §4 paired reads.
