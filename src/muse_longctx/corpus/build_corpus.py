@@ -56,6 +56,9 @@ def load_pool(d):
     return rows
 
 
+BUCKETS_TO_REPORT = (131072, 262144)   # trainer --seq-bucket candidates (PLAN §7)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="train_v1")
@@ -101,8 +104,14 @@ def main():
             f.write(json.dumps(r) + "\n")
     manifest = {"name": args.name, "seed": args.seed, "rows": len(out_rows),
                 "tokens": sum(len(r["input_ids"]) for r in out_rows), "components": stats,
+                "length_buckets": {str(b): {
+                    "rows": sum(1 for r in out_rows if len(r["input_ids"]) <= b),
+                    "tokens": sum(len(r["input_ids"]) for r in out_rows
+                                  if len(r["input_ids"]) <= b)}
+                    for b in BUCKETS_TO_REPORT},
                 "length_note": "genuine-only so far; virtual-position rows enter via the "
-                               "position sampler at §9 ablation time"}
+                               "position sampler at §9 ablation time. length_buckets = "
+                               "what the trainer sees per --seq-bucket setting."}
     with open(os.path.join(outdir, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=1)
     print(json.dumps(manifest, indent=1))

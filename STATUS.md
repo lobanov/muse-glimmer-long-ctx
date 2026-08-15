@@ -90,3 +90,13 @@ Last updated: 2026-08-15.
   9/10, 6/7) — systematic attention dilution (drops 1 of k markers), not random collapse
   and not positional. Direct §10 implication: aggregation-under-distractor data +
   global-layer focus; also the cleanest §8 regression metric for run1.
+- 2026-08-15 (cont.5, 03:40): corpus length-mixture audit caught a hidden assumption —
+  seq_bucket=131072 would silently drop 68/173 rows (26M of 31.5M tok; repos sit at
+  186k-1.5M). Fixes: manifest now reports per-bucket stats; stage6 G3 gate is
+  bucket-aware (checks what the trainer sees). Band fill: +12 synth (slow path),
+  +32 book slices, +5 repos → v1.1: 258 raw / @131072 173 rows, 10.87M tok visible,
+  genuine 96-128k = 40 rows, 39.1% of visible tokens. Deviation from §7's 55-70%
+  documented (synth=30%/doc is pi-bound at ~30s/section; activation memory caps bucket
+  at 131k, more conservative than PLAN's 128-256k fallback); §8/§10 diagnostics decide
+  whether v2 needs more. Source shares: natural 20.2% (over 15% target, from band
+  filling — accepted, recorded).

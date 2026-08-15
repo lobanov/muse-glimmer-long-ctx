@@ -32,8 +32,13 @@ log "G2 ok: corpus batch finished"
 python3 - <<'PY' || { log "G3 FAILED: corpus too small — NOT launching (needs manual scale-up)"; exit 1; }
 import json, sys
 m = json.load(open("outputs/corpus/train_v1/manifest.json"))
-ok = m["rows"] >= 100 and m["tokens"] >= 5_000_000
-print(f'G3: rows={m["rows"]} tokens={m["tokens"]:,} -> {"ok" if ok else "TOO SMALL"}')
+# G3 is BUCKET-AWARE: the trainer runs --seq-bucket 131072, so the gate checks what the
+# trainer will actually see (length_buckets), not the raw manifest totals — a corpus
+# whose mass sits above the bucket would otherwise pass the gate and train on scraps.
+b = m.get("length_buckets", {}).get("131072", m)
+ok = b["rows"] >= 100 and b["tokens"] >= 5_000_000
+print(f'G3@131072: rows={b["rows"]} tokens={b["tokens"]:,} '
+      f'(raw {m["rows"]} rows / {m["tokens"]:,}) -> {"ok" if ok else "TOO SMALL"}')
 sys.exit(0 if ok else 1)
 PY
 
