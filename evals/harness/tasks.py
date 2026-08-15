@@ -238,7 +238,11 @@ def score(task, content, meta):
         v = int(m.group())
         return (1.0, "exact") if v == meta["count"] else (0.0, f"got {v} want {meta['count']}")
     if task == "semantic":
-        return (1.0, "hit") if meta["place"].lower() in low else (0.0, "miss")
+        # model answers may drop the leading article ("lakeside terminus" vs
+        # "the lakeside terminus") — accept both; strip leading 'the ' from gold
+        places = {meta["place"].lower()}
+        places |= {p[4:] for p in places if p.startswith("the ")}
+        return (1.0, "hit") if any(p in low for p in places) else (0.0, "miss")
     if task == "abstain":
         fabricated = bool(_FABRICATED.search(c))
         acknowledged = bool(_ABSTAIN_OK.search(c))
