@@ -124,3 +124,5 @@ Last updated: 2026-08-15.
   stage7 §8 grid adds counting+cwe. Watchers killed by pid (stale ones held file offsets
   into edited scripts) and re-armed fresh (04:34). Stock >128k grid untouched (mid-flight;
   its task list predates cwe — manual follow-up already noted).
+- live (05:00): niah@384k 3/3 (347k-ptok prompts) — stock retrieval extrapolation holds
+  to 3× nominal; weak-axis cells (counting@192k+) approaching in task-major order.
