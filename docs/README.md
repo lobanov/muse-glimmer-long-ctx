@@ -16,6 +16,7 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 | §3 baseline | (in progress — `outputs/eval/stock_vllm_le128k.jsonl`, `logs/eval-stock-le128k.log`) | running; overnight → suite → stage3–stage9 chains armed |
 | §12 deployment config | [phase12-deployment-config.md](phase12-deployment-config.md) | config complete; qualification awaits RTX 5090 |
 | Benchmarks reference | [benchmarks.md](benchmarks.md) | all instruments: constructs, scoring, licenses, coverage map |
+| Adversarial review (GLM-5.3) + verification | [review-glm53-verification.md](review-glm53-verification.md) | claim-by-claim verdicts; findings NOT actioned (pending owner decision) |
 | Deliverables audit | [deliverables.md](deliverables.md) | every GOAL criterion ↔ evidence artifact + status |
 
 ## Queued automation
