@@ -209,3 +209,16 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   decode-strategy hypothesis, FOR retrieval/attention (dilution). Sharpest case:
   want 12, model enumerated 11 entries then answered 9 — one marker never surfaced.
   Caveat: n=3 pairs, enum-token-counting is crude; full 34-row run continues.
+- E2 VERDICT (22:07, complete n=17 paired): enum-fix-rate 0.35 / greedy-miss 0.71 →
+  script verdict "inconclusive", but the PAIRED anatomy is informative:
+  * 11/17 BOTH-MISS — explicit entry-by-entry enumeration does NOT rescue; in 5 pairs
+    the model listed FEWER entries than k even when told to enumerate methodically
+    (e.g. want 12, listed 11 twice under both conditions) → markers genuinely not
+    surfacing = RETRIEVAL-SIDE (dilution) evidence.
+  * Several miss cells resolved under BOTH conditions (5 both-correct + 1 FIXED) →
+  original capability-mode misses were partly stochastic decode variance.
+  * Note: 'numbers_listed' counts any digit token (entry numbers ≈ marker count k, so
+    correct enumerations list ~k-2k digits) — crude, interpreted with that caveat.
+  NET: mechanism picture = mixed retrieval-undercount (dominant, enumeration-resistant)
+  + decode variance (minor). qk hypothesis remains the live causal test (§4 v2.1).
+  phase-3/PLAN language already downgraded — consistent with this.
