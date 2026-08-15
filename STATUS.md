@@ -161,3 +161,6 @@ capability contract, zero truncations, zero transport errors):
   at SHORT context (counting is 0.95 there): wrong-word misses (marsh→savanna), not
   just undercounts. Sharper §8 regression instrument than counting, as intended.
   Lanes: gt128k 82/216 (semantic 512k column ~done), nolima 39/54, cwe 5/36.
+- live (12:25): multihop@256k 1.000 (3/3, 232k-ptok prompts) — 2-hop reasoning ALSO
+  holds zero-shot at 2x nominal. gt128k 90/216 (semantic+niah columns complete at
+  1.000; multihop running), nolima 42/54, cwe 7/36. All watchers verified.
