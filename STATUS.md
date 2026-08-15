@@ -157,3 +157,7 @@ capability contract, zero truncations, zero transport errors):
   its task list predates cwe — manual follow-up already noted).
 - live (05:00): niah@384k 3/3 (347k-ptok prompts) — stock retrieval extrapolation holds
   to 3× nominal; weak-axis cells (counting@192k+) approaching in task-major order.
+- live (11:19): cwe@32k 0.600 (n=5, interim) — the harder aggregation task discriminates
+  at SHORT context (counting is 0.95 there): wrong-word misses (marsh→savanna), not
+  just undercounts. Sharper §8 regression instrument than counting, as intended.
+  Lanes: gt128k 82/216 (semantic 512k column ~done), nolima 39/54, cwe 5/36.
