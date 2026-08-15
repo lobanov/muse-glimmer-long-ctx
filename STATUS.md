@@ -11,7 +11,7 @@ Last updated: 2026-08-15.
 | §0 compat/memory spike | ✅ complete — all gates passed | `docs/phase0-compat-memory-spike.md` |
 | §1 environment pinning | ✅ complete | `docs/environment.md` |
 | §2 eval harness | ✅ core + NoLiMa + LongBench v2 + LongCodeQA + ∞Bench + custom agentmem; RULER-official/HELMET/LongSWE deferred by design | `docs/phase2-eval-harness.md` |
-| §3 stock baseline | 🔄 running — 109+/378 ≤128k cells; niah/niah_multi 100.0±0.0 so far; **plugin suite live-verified** through the real runner (nolima/lb-v2/lqa/infbench/agentmem) — infb_kv 1.0 @124k-ptok UUID retrieval, agentmem 4/4; lb-v2/lqa single-cell misses = real difficulty; >128k + suites + §4 + §7 dry-run queued | `docs/results-snapshot.md` |
+| §3 stock baseline | 🔄 ≤128k **COMPLETE** (report: docs/phase3-stock-baseline.md — 5/6 tasks 1.000, counting sole axis 0.95→0.48); >128k grid running; §0 caveat closed | `docs/phase3-stock-baseline.md` |
 | §4 zero-shot arms | 🔧 arms built & validated (qk 4.1/4.3/4.6/5.0, yarn4, stock-524k); GGUF-metadata spike answered; runs queued behind §3 | `docs/phase4-zeroshot-arms.md`, `outputs/arms/` |
 | §5 training corpus | ✅ **v1 BUILT**: 173 rows / 31.5M tokens genuine-length (repos 34.7% · synth 34.1% · natural 16.2% · short 11.6% · agent 3.5% honest shortfall); pi-headless teacher; stage6 G3 gate PASS
 | §6 position sampler | ✅ complete + selftested | `docs/phase6-position-sampler.md` |
