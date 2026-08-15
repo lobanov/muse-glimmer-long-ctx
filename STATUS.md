@@ -27,7 +27,9 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   strengthen-qualify-deploy branch; the queued counting/cwe >128k columns decide whether
   adaptation still adds material value on the weak axis.
 - **Counting = sole degradation axis ≤128k** (0.952→0.476), every miss an exact
-  **off-by-one undercount** — systematic attention dilution on the 13 NoPE-global layers
+  **undercount-biased errors** — consistent with attention dilution on the 13 NoPE-global
+  layers as ONE live hypothesis (enumeration/decode-arithmetic slips unexcluded — E2
+  forensics running; see docs/review-glm53-verification.md)
   (PLAN §10 mode B; the §4a qk-scale target). cwe (harder aggregation: compare counts
   across 8 candidates) sits at 0.778 @32k — discriminates at SHORT context with
   wrong-word errors, a sharper §8 instrument than counting.
@@ -123,8 +125,12 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   partial) — while niah/niah_multi/multihop stay 1.000 everywhere. First non-trivial
   baseline result: aggregation/counting is the weak axis, retrieval is robust ≤128k.
   Feeds phase-3 report + §10 (expected mode B: distractor-load, not positional).
-- counting-miss anatomy (00:52): ALL misses are exact off-by-one UNDERCOUNTS (8/9, 11/12,
-  9/10, 6/7) — systematic attention dilution (drops 1 of k markers), not random collapse
+- counting-miss anatomy (ERRATUM 2026-08-15, post-review): early claim "ALL misses
+  off-by-one" was stale — full data: 12/17 are k−1, plus one OVER-count (13 vs 12) and
+  four under-counts of 2–3. Undercount-biased, not perfectly systematic. Mechanism NOT
+  established: dilution vs enumeration/arithmetic slips both live → E2 forensics lane
+  running (`outputs/eval/e2_counting_forensics.jsonl`).
+  (Superseded mid-grid note removed: early 4-miss sample had shown only k−1.)
   and not positional. Direct §10 implication: aggregation-under-distractor data +
   global-layer focus; also the cleanest §8 regression metric for run1.
 - 2026-08-15 (cont.5, 03:40): corpus length-mixture audit caught a hidden assumption —
@@ -139,7 +145,7 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   filling — accepted, recorded).
 - 2026-08-15 03:53 MILESTONES: §3 ≤128k grid COMPLETE (378/378): niah/niah_multi/multihop/
   semantic/abstain ALL 1.000±0.000 (n=21 each); counting sole degradation axis
-  (0.952/0.762/0.476 @32/64/128k, all off-by-one undercounts). §0 caveat CLOSED
+  (0.952/0.762/0.476 @32/64/128k, undercount-biased errors — see ERRATUM above). §0 caveat CLOSED
   (K-Quant 3/3 under low-reasoning contract — phase-0 action item done). Scorer bug
   fixed live (semantic article) — 63/63 re-scored hit, flagged rescored. vLLM @524288
   on stock-524k serving (window fix validated live); >128k grid started — first cell
@@ -174,3 +180,15 @@ zero transport errors; ≤128k n=21/cell complete, >128k n=9/cell):
   extrapolates zero-shot to 4x nominal. gt128k 100/216 (niah/semantic/multihop columns
   effectively complete at 1.000; abstain+counting+niah_multi remain), nolima 48/54,
   cwe 12/36 (@64k cells running).
+- 2026-08-15 16:30 REVIEW ACTIONS (docs/review-glm53-verification.md): (1) stage6
+  auto-train KILLED + replaced by approval-gated v2 (verified: 21-step corpus,
+  +57pt winner floor — unconditional training was indefensible); (2) stage4 sweep
+  trimmed/repowered 405→~83 cells (counting+cwe focused, 5 reps, +64k harm-check,
+  yarn4→probe); (3) counting-mechanism downgraded to live hypothesis + errata in
+  STATUS/phase-3 (12/17 k−1, one over-count); (4) >128k grid reordered counting-first
+  (decision data 6-8h earlier); (5) E2 forensics lane launched (17 miss instances ×
+  greedy/enumeration — adjudicates dilution vs decode-strategy). Reviewer errors noted:
+  LBv2-512k pool is 44 not ≤3; marker-adjacency impossible (min gap 2.3k tok).
+  Open follow-ups: NoLiMa id-pinned variant; corpus↔eval family circularity → §8 must
+  corroborate counting/cwe gains on NoLiMa/LQA/LBv2; CI-prefix caveat; export
+  rehearsal (C8) queued behind grid (no schedule cost).

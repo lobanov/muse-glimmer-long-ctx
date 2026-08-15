@@ -1,52 +1,50 @@
 #!/usr/bin/env bash
-# Stage-6 queue (host-side): launch §7 first QLoRA run when everything is ready.
-# Gates (ALL required, checked in order):
-#   G1 stage5 done with "dry-run OK"          (trainer wiring proven, GPU free)
-#   G2 corpus batch finished (process gone)   (batch_generate.py)
-#   G3 corpus volume: train_v1 ≥ 100 rows and ≥ 5M tokens (manifest.json)
-# Then:
-#   - pick §4 winner: qk arm that beats stock beyond CI on ≥2 of {128k,256k,512k}×{niah,
-#     semantic} (python inline over outputs/eval/arm_*.jsonl); else no override (stock knobs)
-#   - launch QLoRA detached inside dev (log: logs/train-run1.log), marker logs/train1.launched
+# Stage-6 queue v2 (host-side): CONDITIONAL §7 launch — approval-gated.
+#
+# Change 2026-08-15 after adversarial review (docs/review-glm53-verification.md, R1):
+# the previous version auto-trained on ANY dry-run-OK + corpus gates. Verified facts
+# that killed it: trainer-visible corpus = 174 rows → ~21 optimizer steps; winner rule
+# detectable effect ≈ +57pts (n=9 binary CI); stage6 never had a no-training branch.
+#
+# Now: gates on (1) stage5 dry-run OK  (2) corpus bucket-aware size  (3) an EXPLICIT
+# human/agent approval marker: logs/train1.approved — created only after reviewing
+# §4 sweep + §3 counting/cwe >128k evidence (or a deliberate decision to train anyway).
+# The §4-winner computation stays (informational, printed to the log for the decision).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage6-queue.log; }
 
-log "stage6 armed (pid $$)"
+log "stage6-v2 armed (pid $$): approval-gated (requires logs/train1.approved)"
+
 while :; do
     if [ -f logs/stage5-queue.done ]; then
         grep -q "dry-run OK" logs/stage5-queue.done && break
         if grep -q "dry-run FAILED" logs/stage5-queue.done; then
-            echo "blocked: stage5 dry-run FAILED $(date '+%F %T')" > logs/train1.launched
-            log "BLOCKED: §7 dry-run failed (see logs/stage5-queue.log) — NOT training; fix trainer wiring first"
-            exit 1
+            log "BLOCKED: §7 dry-run failed — fix trainer wiring first"; exit 1
         fi
     fi
     sleep 300
 done
 log "G1 ok: stage5 dry-run OK"
+
 while pgrep -f 'batch_generate' >/dev/null; do sleep 300; done
-log "G2 ok: corpus batch finished"
-python3 - <<'PY' || { log "G3 FAILED: corpus too small — NOT launching (needs manual scale-up)"; exit 1; }
+python3 - <<'PY' || { log "G3 FAILED: corpus too small at bucket 131072"; exit 1; }
 import json, sys
 m = json.load(open("outputs/corpus/train_v1/manifest.json"))
-# G3 is BUCKET-AWARE: the trainer runs --seq-bucket 131072, so the gate checks what the
-# trainer will actually see (length_buckets), not the raw manifest totals — a corpus
-# whose mass sits above the bucket would otherwise pass the gate and train on scraps.
 b = m.get("length_buckets", {}).get("131072", m)
 ok = b["rows"] >= 100 and b["tokens"] >= 5_000_000
-print(f'G3@131072: rows={b["rows"]} tokens={b["tokens"]:,} '
-      f'(raw {m["rows"]} rows / {m["tokens"]:,}) -> {"ok" if ok else "TOO SMALL"}')
+print(f'G3@131072: rows={b["rows"]} tokens={b["tokens"]:,} -> {"ok" if ok else "TOO SMALL"}')
 sys.exit(0 if ok else 1)
 PY
+log "G2+G3 ok"
 
-# §4 winner: significant win beyond CI on >=2 task×ctx cells vs stock
-OVERRIDE_JSON=$(python3 - <<'PY'
+# informational: §4 winner under the OLD per-cell rule (printed for the approval decision)
+python3 - <<'PY' >> logs/stage6-queue.log 2>&1
 import glob, json, math
 from collections import defaultdict
-T975 = {2: 4.303, 3: 3.182}
+T975 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571}
 def cells(label, files):
     d = defaultdict(list)
     for f in files:
@@ -60,28 +58,59 @@ def cells(label, files):
 stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
 for arm in ("qk4.1", "qk4.3", "qk4.6", "qk5.0"):
     a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
+    pooled_a, pooled_s = [], []
+    percell = []
+    for k, xs in a.items():
+        s = stock.get(k)
+        if not s: continue
+        am, sm = sum(xs)/len(xs), sum(s)/len(s)
+        pooled_a += xs; pooled_s += s
+        percell.append((k, round(am-sm, 3)))
+    if pooled_a:
+        # pooled sign read (small-n binary: per-cell CIs are near-useless at n<=5)
+        wins = sum(1 for k, d in percell if d > 0)
+        pm = sum(pooled_a)/len(pooled_a); psm = sum(pooled_s)/len(pooled_s)
+        print(f"[winner-info] {arm}: per-cell wins {wins}/{len(percell)}; "
+              f"pooled arm {pm:.3f} vs stock {psm:.3f} ({(pm-psm)*100:+.1f} pts, "
+              f"n={len(pooled_a)}) — REVIEW before approving train1")
+PY
+
+while [ ! -f logs/train1.approved ]; do
+    log "waiting for approval marker logs/train1.approved (§4 + §3 evidence review)"
+    sleep 600
+done
+log "APPROVED: $(cat logs/train1.approved 2>/dev/null)"
+
+OVERRIDE_JSON=$(python3 - <<'PY'
+import glob, json
+from collections import defaultdict
+def cells(label, files):
+    d = defaultdict(list)
+    for f in files:
+        for line in open(f):
+            try: r = json.loads(line)
+            except Exception: continue
+            if r.get("error") or r.get("score") is None: continue
+            if r["config_label"] != label: continue
+            d[(r["task"], r["target_ctx"])].append(r["score"])
+    return d
+stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
+for arm in ("qk4.3", "qk5.0", "qk4.1", "qk4.6"):
+    a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
     wins = 0
     for k, xs in a.items():
         s = stock.get(k)
-        if not s or len(xs) < 2: continue
-        am, ci = sum(xs)/len(xs), T975.get(len(xs)-1, 1.96)*(0.0 if len(xs)<2 else
-            math.sqrt(sum((x-sum(xs)/len(xs))**2 for x in xs)/(len(xs)-1)))/math.sqrt(len(xs))
-        sm = sum(s)/len(s)
-        if am - ci > sm and (am - sm) * 100 > 3:
+        if not s or len(xs) < 3: continue
+        am, sm = sum(xs)/len(xs), sum(s)/len(s)
+        if am - sm > 0.15 and len(xs) >= 5:   # pooled-instance significance is judged by the reviewer; 15pt floor
             wins += 1
     if wins >= 2:
-        val = arm[2:]
-        print(json.dumps({"qk_scale_factor": float(val)}))
-        break
+        print(json.dumps({"qk_scale_factor": float(arm[2:])})); break
 else:
     print("")
 PY
 )
-if [ -n "$OVERRIDE_JSON" ]; then
-    log "§4 winner detected -> --config-override $OVERRIDE_JSON"
-else
-    log "no significant §4 winner -> training with stock knobs (3.87)"
-fi
+[ -n "$OVERRIDE_JSON" ] && log "qk override: $OVERRIDE_JSON" || log "no qk override (stock knobs)"
 
 docker exec -d "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 src/muse_longctx/train_qlora.py \
@@ -92,4 +121,4 @@ docker exec -d "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     $([ -n \"$OVERRIDE_JSON\" ] && echo \"--config-override '$OVERRIDE_JSON'\") \
     > /workspaces/muse-glimmer-long-ctx/logs/train-run1.log 2>&1"
 echo "launched $(date '+%F %T') override=${OVERRIDE_JSON:-none}" > logs/train1.launched
-log "§7 run1 launched — monitor: logs/train-run1.log (loss lines every 10 steps)"
+log "§7 run1 launched (post-approval) — monitor logs/train-run1.log"

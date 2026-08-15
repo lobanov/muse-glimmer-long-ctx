@@ -410,3 +410,34 @@ Produce:
 ## Decision Rule
 
 The final model should be selected on **useful long-context performance under the 32 GB deployment constraint**, not on nominal context length alone.
+
+---
+
+## Post-review adjustments (2026-08-15, adversarial review `docs/review-glm53-verification.md`)
+
+Verified findings changed three things (rationale recorded per the goal contract):
+
+1. **§7 first run is now APPROVAL-GATED** (`scripts/stage6_queue.sh` v2). The previous
+   auto-launch would have trained unconditionally on a trainer-visible corpus of 174
+   rows ≈ **21 optimizer steps**, under a winner rule whose n=9 binary CI could only
+   detect ≈+57pt effects. Now: gates (dry-run OK, bucket-aware corpus size) + explicit
+   `logs/train1.approved` marker, created only after reviewing §4 + §3 counting/cwe
+   evidence. §4-winner computation retained as decision input (pooled reads).
+2. **§4 sweep trimmed + repowered** (`scripts/stage4_queue.sh` v2): 405 → ~83 cells.
+   Drops saturated niah/semantic from the sweep (they remain harm-checks), focuses on
+   the two discriminating tasks (counting, cwe) at 128k–512k with 5 instance-reps
+   (pooled n=15/arm/task), adds the previously-missing ≤64k harm-check cells, brackets
+   qk to {4.3, 5.0}, demotes yarn4 to a 3-cell probe. YaRN-inert prediction unchanged.
+3. **Counting-mechanism language downgraded** everywhere from "established dilution"
+   to "one live hypothesis": full-scale miss anatomy is 12/17 k−1 (not all), and
+   reasoning traces show enumeration slips as an unexcluded alternative. E2 forensics
+   (greedy ± enumeration-hint, exact miss instances) adjudicates.
+4. **>128k grid reordered** (counting, niah_multi first): decision-relevant cells ~6–8h
+   earlier; resume-safe, no data lost.
+
+Open follow-ups recorded in STATUS: NoLiMa cross-length trend invalid as instrumented
+(different instances per length — needs id-pinned variant for any trend claim);
+corpus↔eval task-family circularity (§8 trained-model gains on counting/cwe must be
+corroborated on held-out families: NoLiMa/LQA/LBv2); rep-prefix correlation (50%
+shared prompt → CIs optimistic; treat CIs as upper bounds); finish_reason=length
+gating in compare paths when §8 runs.
