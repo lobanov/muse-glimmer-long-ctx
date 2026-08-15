@@ -67,14 +67,14 @@ log "merged serving"
 log "§8 grid: run1 decision subset + ≤32k regression"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
-    --config-label run1 --tasks niah,semantic,multihop,abstain \
+    --config-label run1 --tasks niah,semantic,multihop,abstain,counting,cwe \
     --ctx 128000,256000,512000 --depths 0.0,0.5,1.0 --reps 3 \
     --mode capability --max-tokens 4096 \
     --out outputs/eval/run1_vllm.jsonl --write-parquet" \
     >> logs/stage7-grid.log 2>&1 || log "WARN: run1 grid partial (data kept)"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
-    --config-label run1 --tasks niah,semantic,multihop,abstain \
+    --config-label run1 --tasks niah,semantic,multihop,abstain,counting \
     --ctx 32000 --depths 0.0,0.5,1.0 --reps 3 \
     --mode capability --max-tokens 4096 \
     --out outputs/eval/run1_vllm_short.jsonl" \

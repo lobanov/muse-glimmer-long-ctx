@@ -34,7 +34,7 @@ for ARM in $ARMS; do
     log "== arm $ARM: grid =="
     docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
         python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
-        --config-label $ARM --tasks niah,semantic \
+        --config-label $ARM --tasks niah,semantic,counting \
         --ctx 128000,256000,512000 --depths 0.0,0.5,1.0 --reps 3 \
         --mode capability --max-tokens 4096 \
         --out outputs/eval/arm_${ARM}.jsonl --write-parquet" \

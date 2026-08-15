@@ -119,3 +119,8 @@ Last updated: 2026-08-15.
   Accepted + documented (mixer records actuals); v2 options: synthetic-trajectory
   augmentation or a context-signature fact extractor, only if §8 diagnostics flag the
   agentmem axis as limiting. Corpus v1.1 final: 259 raw / 174 visible @131072.
+- 2026-08-15 04:35: GRID-DESIGN FIX — stage4 arm sweep now includes counting (the weak axis;
+  qk hypothesis is specifically about attention dilution — untestable without it) and
+  stage7 §8 grid adds counting+cwe. Watchers killed by pid (stale ones held file offsets
+  into edited scripts) and re-armed fresh (04:34). Stock >128k grid untouched (mid-flight;
+  its task list predates cwe — manual follow-up already noted).
