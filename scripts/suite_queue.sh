@@ -21,6 +21,15 @@ log "suite queue armed (pid $$); waiting for overnight chain"
 while [ ! -f logs/overnight-queue.done ]; do sleep 300; done
 log "overnight chain done: $(cat logs/overnight-queue.done)"
 
+# do not race the concurrent suite LANE (same output files/cell ids): wait until it
+# finishes (marker) or its process is gone; the queue then no-op-skips lane-completed
+# cells via resume and runs only what remains.
+while [ ! -f logs/suite-lane.done ] && pgrep -f "scripts/suite_lane" >/dev/null; do
+    log "suite lane still running — waiting"
+    sleep 300
+done
+log "suite lane settled; proceeding (resume skips its cells)"
+
 # vLLM @524288 must be up (queue step 5 leaves it serving)
 UP=0
 for _ in $(seq 1 60); do
