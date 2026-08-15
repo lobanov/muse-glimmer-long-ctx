@@ -15,6 +15,7 @@ environment: `CONTRIBUTING.md`; agent rules: `AGENTS.md`.
 | §5 corpus | [phase5-corpus-plan.md](phase5-corpus-plan.md) | **pipeline complete** — pi-headless GLM-5.2 teacher (owner directive); all 5 components validated; batch scale-up running |
 | §3 baseline | (in progress — `outputs/eval/stock_vllm_le128k.jsonl`, `logs/eval-stock-le128k.log`) | running; overnight → suite → stage3–stage9 chains armed |
 | §12 deployment config | [phase12-deployment-config.md](phase12-deployment-config.md) | config complete; qualification awaits RTX 5090 |
+| Benchmarks reference | [benchmarks.md](benchmarks.md) | all instruments: constructs, scoring, licenses, coverage map |
 | Deliverables audit | [deliverables.md](deliverables.md) | every GOAL criterion ↔ evidence artifact + status |
 
 ## Queued automation
