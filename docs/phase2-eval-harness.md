@@ -31,6 +31,7 @@ exclusion guarantee by construction; community suites integrate behind the same 
 | `conflicts` | conflicting facts: same key recorded twice; recency rule stated; must report the superseding value (and not the stale one) | 1 correct / 0.5 both / 0 stale |
 | `set_intersect` | two distant lists → items in BOTH | IoU over reported set |
 | `chronology` | 5 scattered timestamped events → 3 earliest in order | in-order hits /3 |
+| `cwe` | RULER-CWE-style: 8 candidate words with distinct occurrence counts → most frequent (gap ≥3 guaranteed) | exact word |
 
 All tasks ship with a module selftest (`python3 evals/harness/tasks.py`) asserting builder
 invariants and scorer edge cases (added after a real precedence bug was caught in `conflicts`).

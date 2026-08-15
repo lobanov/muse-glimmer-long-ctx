@@ -24,7 +24,7 @@ PARA = ("Log entry {n}: routine diagnostics completed across the western array; 
         "mentions minor variance in coolant pressure but nothing outside tolerance bands.")
 
 TASKS = ["niah", "niah_multi", "multihop", "counting", "semantic", "abstain",
-         "conflicts", "set_intersect", "chronology"]
+         "conflicts", "set_intersect", "chronology", "cwe"]
 
 
 def _haystack(rng, target_tokens):
@@ -126,6 +126,34 @@ def build_semantic(rng, target_tokens, depth):
     return prompt, {"place": place, "traveler": traveler}
 
 
+def build_cwe(rng, target_tokens, depth):
+    """RULER-CWE-style: 8 candidate words distributed through the haystack with
+    distinct occurrence counts; report the MOST FREQUENT one. Strictly harder than
+    binary counting (requires comparing counts across candidates) — targets the
+    measured weak axis (aggregation under distractor load)."""
+    pool = ["tundra", "basalt", "quartz", "fjord", "mangrove", "savanna",
+            "steppe", "taiga", "reef", "estuary", "marsh", "canyon"]
+    words = rng.sample(pool, 8)
+    counts = sorted(rng.sample(range(3, 11), 7))[:-1] + [rng.randint(12, 16)]
+    # ensure a clear gap (≥3) between top and runner-up
+    counts = sorted(counts)
+    counts[-1] = max(counts[-1], counts[-2] + 3)
+    rng.shuffle(counts)
+    gold = words[counts.index(max(counts))]
+    body = _haystack(rng, target_tokens)
+    n_occ = sum(counts)
+    step = max(1, (len(body) - 800) // (n_occ + 2))
+    slots = sorted(rng.sample(range(400, len(body) - 400, step), n_occ))
+    wi = list(range(8)) * 0
+    occ = [w for w, c in zip(words, counts) for _ in range(c)]
+    rng.shuffle(occ)
+    for pos, w in zip(slots, occ):
+        body = body[:pos] + f" {w.upper()} " + body[pos:]
+    q = ("Among the following words scattered through the log entries above, which one "
+         "appears MOST often: " + ", ".join(words) + "? Reply with that word only.")
+    return _wrap(body, q), {"gold": gold, "counts": dict(zip(words, counts))}
+
+
 def build_abstain(rng, target_tokens, depth):
     """Needle absent — expected answer: acknowledge absence, do not fabricate."""
     color, name = rng.choice(COLORS), rng.choice(NAMES)
@@ -209,6 +237,7 @@ BUILDERS = {
     "conflicts": build_conflicts,
     "set_intersect": build_set_intersect,
     "chronology": build_chronology,
+    "cwe": build_cwe,
 }
 
 
@@ -268,6 +297,8 @@ def score(task, content, meta):
         inter = len(want & got)
         union = len(want | got)
         return inter / union if union else 0.0, f"iou {inter}/{union}"
+    if task == "cwe":
+        return (1.0, "hit") if meta["gold"].lower() in low else (0.0, "miss")
     if task == "chronology":
         want = meta["first3"]
         # accept comma- or newline-separated; must be in order
