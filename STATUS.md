@@ -100,3 +100,10 @@ Last updated: 2026-08-15.
   at 131k, more conservative than PLAN's 128-256k fallback); §8/§10 diagnostics decide
   whether v2 needs more. Source shares: natural 20.2% (over 15% target, from band
   filling — accepted, recorded).
+- 2026-08-15 03:53 MILESTONES: §3 ≤128k grid COMPLETE (378/378): niah/niah_multi/multihop/
+  semantic/abstain ALL 1.000±0.000 (n=21 each); counting sole degradation axis
+  (0.952/0.762/0.476 @32/64/128k, all off-by-one undercounts). §0 caveat CLOSED
+  (K-Quant 3/3 under low-reasoning contract — phase-0 action item done). Scorer bug
+  fixed live (semantic article) — 63/63 re-scored hit, flagged rescored. vLLM @524288
+  on stock-524k serving (window fix validated live); >128k grid started — first cell
+  niah@192k = 1.0 hit @173k prompt tokens.
