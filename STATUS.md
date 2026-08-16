@@ -321,3 +321,20 @@ root == `/arms/stock-524k`; block moved below function definitions. Gotcha recor
 `pkill -f` in a compound command self-matches the wrapper shell's cmdline (bracket
 trick insufficient when the literal appears elsewhere in the same command) — split
 kill/start into separate tool calls.
+
+### Addendum 19:40 — idle-watcher hardening (audit MONITOR items); enrichment pairing verified
+
+- stage5/6/7 watchers patched & re-armed (all were idle in wait loops; kill-by-pid +
+  re-arm): stage5 writes a `dry-run FAILED` marker + blocked on verify-env failure
+  (was: bare exit → stage6 waited forever); stage6 G1/G3 failures now loud (blocked),
+  G2 also checks the dev container for batch_generate, and the approval gate refuses
+  an empty `train1.approved` or a non-clean stage4 completion (audit 2.1/3.2/3.4);
+  stage7 detects trainer-crash (launched ≥15 min ago, trainer gone, no adapter) →
+  blocked instead of waiting forever (audit 3.1). Bash gotcha found: a multi-line
+  `{ … }` group after `<<'PY' ||` breaks heredoc parsing — keep such groups one-line.
+- Dashboard: any marker containing FAILED renders non-done (was prefix-match only).
+- **Enrichment pairing verified from disk**: stock_weak5 vs original stock rows share
+  6 (task,ctx,rep) cells → 0/6 cell_seed mismatches (identical instances, paired
+  reads valid); 5/6 score agreement (one stochastic flip at temp 1.0 — expected;
+  enrichment re-measures under fresh sampling, pooled deltas unaffected).
+- Stage4 enrichment in flight: 8/20 (counting@256k exact on all reps so far).
