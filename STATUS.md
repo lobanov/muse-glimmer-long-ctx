@@ -242,3 +242,15 @@ per-cell n in parens; n<9 = partial; — = queued)
   stochastic, no clean length trend); §4a = hypothesis exploration. E2 verdict rule
   now 3-way. train1 stays approval-gated; approval evidence = k-matched grid +
   E2-complete + §4 paired reads.
+- 2026-08-16 08:45 MILESTONE: §3 COMPLETE (both grids). Final >128k: retrieval/reasoning
+  1.000 everywhere (niah/niah_multi/multihop/semantic/abstain, all lengths through 512k);
+  counting 0.667/0.667/0.667/0.222 — non-monotone plateau then real drop only at 4×
+  nominal. Decision rule: 100% retention → strengthen-qualify-deploy formally taken
+  (phase-3 report updated, commit f8f9f5c). k-matched grid COMPLETE (80/80):
+  k-controlled counting shows NO clean monotone length trend at matched difficulty
+  (k=6: 1.0/1.0/0.6/0.8 cap, 1.0/1.0/0.6/1.0 greedy; k=11: 1.0/1.0/0.8/0.8 cap,
+  0.8/0.8/0.6/0.6 greedy) — capability≈greedy at matched k (small stochastic share),
+  and 128k is a LOCAL dip in both strata while 256k partially recovers. Confirms
+  audit reframing: aggregation fragility (k-dependent, noisy, weakly length-linked);
+  the 512k=0.222 main-grid cell likely overstates the length effect (k-draws there).
+  §4 sweep is now the sole pending decision input for train1 approval.
