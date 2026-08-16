@@ -267,3 +267,11 @@ effect (uncontrolled k-draws).
   baseline in reach; n=3 → wide CI, powering decision still pending). Lane now on
   synth3 (148/189; conflicts/set_intersect/chronology landing). §4 sweep next after
   stage3, then the train1 approval decision.
+- 2026-08-16 11:20 SUITE LANE COMPLETE — full stock baseline (all suites on disk,
+  snapshot regenerated). New: conflicts 1.000 everywhere; set_intersect 0.96-1.00;
+  chronology 0.95-1.00; infb_kv 1.000 (UUID KV @128k+256k); infb_codedebug 0.67@128k →
+  0.00@256k (real degradation axis found! repo-scale bug-finding collapses at 256k);
+  infb_bookmc 0.33→0.00. LBv2 0.33-1.00 (n=3, wide). Weak-axis shortlist for §4/§7:
+  counting/cwe (aggregation), infb_codedebug+bookmc @256k (long-doc code/reasoning),
+  NoLiMa (per-length ~0.22-0.67). GPU chain: stage3 (agentmem+PPL) → §4 sweep →
+  approval decision.
