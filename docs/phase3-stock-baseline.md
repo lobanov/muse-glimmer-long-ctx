@@ -72,10 +72,37 @@ K-Quant GGUF via llama.cpp re-ran the failing cell class (128k @ 90% depth × 3,
 The original miss was the reasoning-budget artifact, not retrieval. Quant artifact remains
 a valid baseline for §11 comparisons.
 
-## >128k (192k / 256k / 384k / 512k) — PENDING
+## >128k (192k / 256k / 384k / 512k) — COMPLETE (2026-08-16 07:22, 216/216, n=9/cell)
 
-Grid running (216 cells: 6 tasks × 4 ctx × 3 depths {0,50,100%} × 3 reps; task-major).
-First cell: niah@192k/0% = hit @ 173k prompt tokens. Fill this section from
-`collect_results.sh` when `logs/overnight-queue.done` appears; then compute the decision
-rule (`retention.py` prints the ≥85% verdict automatically) and record the go/no-go for
-training scope here.
+| task | 192k | 256k | 384k | 512k |
+|---|---|---|---|---|
+| niah | 1.000 | 1.000 | 1.000 | 1.000 |
+| niah_multi | 1.000 | 1.000 | 1.000 | 1.000 |
+| multihop (2-hop) | 1.000 | 1.000 | 1.000 | 1.000 |
+| semantic (NoLiMa-style) | 1.000 | 1.000 | 1.000 | 1.000 |
+| abstain | 1.000 | 1.000 | 1.000 | 1.000 |
+| counting | 0.667 | 0.667 | 0.667 | 0.222 |
+
+### Decision-rule verdict (PLAN §3: ≥85% relative retention on retrieval tasks)
+
+Every retrieval/reasoning task retains **100.0%** of its 128k reference at every length
+through 512k (all depths incl. 0%/100%). The ≥85% threshold is met with maximal margin:
+**the project formally takes the strengthen-qualify-deploy branch** (training optional/
+targeted; recorded in PLAN §4 revision). Stock Glimmer @512k (mechanical window only)
+meets GOAL criteria 3 and 4 outright.
+
+### Counting beyond 128k — final picture (with the audit's corrections)
+
+Non-monotone at 0.667 across 192k–384k (vs 0.476 @128k), then **0.222 @512k** — the only
+substantial drop. Interpretation per the audit reframing: aggregation fragility that is
+k-difficulty-dependent and partly stochastic (E2: ~30% of capability misses flip under
+greedy; 11/17 enumeration-resistant), with a genuine length component emerging only at
+4× nominal. The k-matched grid (strata k=6/11, capability+greedy; running) is the clean
+instrument for any claim about length per se.
+
+### Latency (512k cells, GB10, single-lane medians from log)
+
+TTFT ~500–1400 s per 463k-token prompt (prefill-dominated; ~350–900 tok/s effective;
+three concurrent client lanes during collection — treat as lower bounds; 5090 ≈ 6×
+bandwidth). Decode adds ~10–60 s at ≤4096 max_tokens. Agentic 512k use on GB10 is
+patient-but-usable; on the 5090 target it should be comfortably interactive.
