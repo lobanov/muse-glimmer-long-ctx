@@ -21,7 +21,8 @@ done
 echo
 
 # ---- §3 stock grids ------------------------------------------------------------
-STOCK_FILES=$(ls $E/stock_vllm_le128k.jsonl $E/stock_vllm_gt128k.jsonl 2>/dev/null | tr '\n' ' ')
+STOCK_FILES=$(ls $E/stock_vllm_le128k.jsonl $E/stock_vllm_gt128k.jsonl \
+    $E/stock_weak5.jsonl 2>/dev/null | tr '\n' ' ')
 if [ -n "$STOCK_FILES" ]; then
   echo "## §3 stock baseline — score by task × ctx (mean ± 95% CI (n))"
   echo '```'
