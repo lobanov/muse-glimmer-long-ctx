@@ -175,11 +175,30 @@ app.get("/api/status", async (req, res) => {
   const markers = Object.fromEntries(MARKERS.map((m) => [
     m, fs.existsSync(path.join(LOGS, m)) ?
       fs.readFileSync(path.join(LOGS, m), "utf8").trim() : null]));
-  const tails = {};
-  for (const t of ["eval-stock-gt128k", "eval-stock-cwe", "suite-grid-suite_nolima",
-    "overnight-queue", "suite-lane", "train-run1", "stage4-queue", "stage7-queue"]) {
-    const lines = tailFile(path.join(LOGS, `${t}.log`), 4);
-    if (lines) tails[t] = lines;
+  // log tails per STAGE: {stage: {log, lines}} — logs mapped to their owning stage;
+  // multiple logs per stage allowed (e.g. stage4's per-arm grid logs). Longer tails
+  // (24 lines) since they now live behind an accordion.
+  const STAGE_LOGS = {
+    overnight: ["eval-stock-gt128k", "overnight-queue"],
+    suite: ["suite-grid-suite_nolima", "suite-grid-suite_longcodeqa",
+            "suite-grid-suite_infbench", "suite-grid-suite_synth3", "suite-queue"],
+    suite_lane: ["suite-lane"],
+    stage3: ["suite-grid-suite_agentmem", "ppl-probe", "stage3-queue"],
+    stage4: ["stage4-qk4.3-grid", "stage4-qk5.0-grid", "stage4-yarn4-grid", "stage4-queue"],
+    stage5: ["stage5-queue"],
+    stage6: ["stage6-queue", "train-run1"],
+    stage7: ["stage7-grid", "stage7-queue"],
+    stage8: ["export-run1", "stage8-queue"],
+    stage9: ["stage9-grid", "stage9-dflash", "stage9-queue"],
+  };
+  const stageLogs = {};
+  for (const [stage, names] of Object.entries(STAGE_LOGS)) {
+    for (const n of names) {
+      const lines = tailFile(path.join(LOGS, `${n}.log`), 24);
+      if (lines && lines.length) {
+        (stageLogs[stage] = stageLogs[stage] || []).push({ log: `${n}.log`, lines });
+      }
+    }
   }
   let corpus = null;
   try {
@@ -190,7 +209,7 @@ app.get("/api/status", async (req, res) => {
     "http://vllm:8000/v1/models"]);
   res.json({
     ts: new Date().toISOString(),
-    stages, grids, watchers, markers, tails, corpus,
+    stages, grids, watchers, markers, stageLogs, corpus,
     docker: { ps: dockerPs.out, vllm_up: vllm.ok && vllm.out.includes("muse-glimmer") },
   });
 });

@@ -30,6 +30,12 @@
   #stages td:nth-child(3) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
                             max-width:420px; color:var(--dim); font-size:11px; }
   details summary { cursor:pointer; color:var(--dim); font-size:12px; margin-top:10px; }
+  #logs details { border:1px solid var(--line); border-radius:6px; margin:6px 0; }
+  #logs summary { padding:5px 10px; font-size:12px; color:var(--fg); margin:0; }
+  #logs summary .st { margin-left:6px; }
+  #logs pre { margin:0; padding:8px 10px; color:var(--dim); font-size:11px;
+              white-space:pre-wrap; max-height:260px; overflow:auto;
+              border-top:1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -57,6 +63,12 @@
       <span id="resmeta" class="off"></span>
     </div>
     <table id="results"></table>
+  </div>
+
+  <!-- Logs accordion: one section per ACTIVE stage (waiting/blocked/running) -->
+  <div class="panel">
+    <h2>Logs — active stages</h2>
+    <div id="logs" class="off">no active stages with logs</div>
   </div>
 </main>
 <script>
@@ -102,6 +114,24 @@ async function refresh() {
       `<tr><td>${k}</td><td>${v.n}/${v.avail ?? "?"} (${v.actual}, target ${v.target})</td></tr>`).join("")}
   </table>` : "no corpus manifest yet";
   $("env").textContent = (S.docker.ps || "").replace(/\n/g, " · ");
+
+  // ---- logs accordion: sections only for ACTIVE stages (waiting/running/blocked),
+  // ---- each with per-log <details> inside; auto-open the most recently active ----
+  const stCls2 = (s) => s==="done"?"ok":s==="running"?"warn":s==="blocked"?"err":"off";
+  const active = S.stages.filter(g => g.state !== "done");
+  const withLogs = active.filter(g => (S.stageLogs[g.stage] || []).length);
+  if (!withLogs.length) {
+    $("logs").innerHTML = `<span class="off">no active stages with logs${active.length ? " (" + active.map(g=>g.stage).join(", ") + " have none yet)" : " — chain complete"}</span>`;
+  } else {
+    const newest = withLogs.slice().sort((a,b) => (b.updated||0)-(a.updated||0))[0].stage;
+    $("logs").innerHTML = withLogs.map(g =>
+      `<details${g.stage===newest?" open":""}>
+        <summary>${g.stage} <span class="st ${stCls2(g.state)}">${g.state}</span>
+          <span class="off" style="float:right">${g.eta_human ? "ETA "+g.eta_human : ""}</span></summary>
+        ${(S.stageLogs[g.stage]||[]).map(l =>
+          `<pre>${l.log}\n${l.lines.map(esc).join("\n")}</pre>`).join("")}
+      </details>`).join("");
+  }
 
   await loadResults();
 }
