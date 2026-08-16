@@ -306,3 +306,18 @@ verified findings + fixes (commit follows):
   the review; phase-4 doc got an ERRATUM pointer to v2.1.
 Stage4 watcher was killed mid-arm-switch (vLLM cold-starting qk4.3, no eval rows, no
 markers) — re-armed with v2.2 script; it will serve stock first for enrichment.
+
+### Addendum 19:00 — mislabeled-enrichment race caught & fixed (post-audit hardening)
+
+While re-arming stage4 with the audit fixes, two chained bugs briefly launched the
+stock-label enrichment against the **qk4.3** arm (leftover vLLM cold start from the
+killed watcher): (1) the enrichment guard only checked *reachability*, not the served
+model; (2) the enrichment block was inserted before `serve_arm`'s definition
+(undefined → instant 127 → "ERROR" logged but execution continued). Both caught within
+seconds; **zero rows written** (`stock_weak5.jsonl` never created; run_eval killed
+pre-first-cell twice, file verified absent). Fixes: `serve_arm` now polls until the
+served `/v1/models` root matches the requested arm path; enrichment pre-check verifies
+root == `/arms/stock-524k`; block moved below function definitions. Gotcha recorded:
+`pkill -f` in a compound command self-matches the wrapper shell's cmdline (bracket
+trick insufficient when the literal appears elsewhere in the same command) — split
+kill/start into separate tool calls.

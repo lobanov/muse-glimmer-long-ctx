@@ -192,7 +192,7 @@ app.get("/api/status", async (req, res) => {
             "suite-grid-suite_infbench", "suite-grid-suite_synth3", "suite-queue"],
     suite_lane: ["suite-lane"],
     stage3: ["suite-grid-suite_agentmem", "ppl-probe", "stage3-queue"],
-    stage4: ["stage4-qk4.3-grid", "stage4-qk5.0-grid", "stage4-yarn4-grid", "stage4-queue"],
+    stage4: ["stage4-stockweak5-grid", "stage4-qk4.3-grid", "stage4-qk5.0-grid", "stage4-yarn4-grid", "stage4-queue"],
     stage5: ["stage5-queue"],
     stage6: ["stage6-queue", "train-run1"],
     stage7: ["stage7-grid", "stage7-queue"],
