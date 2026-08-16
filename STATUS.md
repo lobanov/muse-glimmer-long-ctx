@@ -338,3 +338,16 @@ kill/start into separate tool calls.
   reads valid); 5/6 score agreement (one stochastic flip at temp 1.0 — expected;
   enrichment re-measures under fresh sampling, pooled deltas unaffected).
 - Stage4 enrichment in flight: 8/20 (counting@256k exact on all reps so far).
+
+### Erratum (2026-08-16 22:00) — depth-0.5 weak-axis stock baselines revised by n=5 enrichment
+
+The §4 gate pairing claim above ("cwe@128k/256k cells pair directly against these stock
+values", n=3/n=9 depth-averaged) is superseded at depth 0.5 by `stock_weak5.jsonl`
+(2026-08-16, seed-paired with arm reps, 0/6 cell_seed mismatches):
+- cwe@128k 1.000 (n=3) → **1.000 (n=5)**; cwe@256k 1.000 (n=3) → **0.600 (n=5)**
+- counting@128k 0.333 (n=3) → **0.800 (n=5)**; counting@256k 1.000 (n=3) → **0.600 (n=5)**
+The n=3 draws were optimistic on 2 of 4 cells (and pessimistic on counting@128k).
+Implications: (a) the §4 pooled gate input is now 15/20 = 0.750 (arm needs 17/20);
+(b) "cwe@256k clean 1.000" is no longer supportable — cwe has real depth-0.5 headroom
+at 256k, making it a genuine weak axis for criterion 7; (c) depth-averaged doc tables
+(phase3 report) are unaffected (they pool depths 0.0/0.5/1.0, n=9). Snapshot regenerated.
