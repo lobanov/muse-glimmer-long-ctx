@@ -24,7 +24,9 @@ while :; do
     if [ -f logs/stage5-queue.done ]; then
         grep -q "dry-run OK" logs/stage5-queue.done && break
         if grep -q "dry-run FAILED" logs/stage5-queue.done; then
-            log "BLOCKED: §7 dry-run failed — fix trainer wiring first"; exit 1
+            log "BLOCKED: §7 dry-run/verify-env failed — fix trainer wiring first"
+            progress_blocked "stage5 dry-run FAILED — chain stopped (audit 3.2)"
+            exit 1
         fi
     fi
     progress_waiting "gate G1: stage5 dry-run"; sleep 300
@@ -32,9 +34,13 @@ done
 log "G1 ok: stage5 dry-run OK"
 progress_step 1 5 "G1 ok"
 
-while pgrep -f 'batch_generate' >/dev/null; do progress_waiting "gate G2: corpus batch running"; sleep 300; done
+# audit 3.4: corpus regen could run inside dev — check container too, not just host
+while pgrep -f 'batch_generate' >/dev/null 2>&1 \
+    || docker exec "$DEV" pgrep -f 'batch_generate' >/dev/null 2>&1; do
+    progress_waiting "gate G2: corpus batch running"; sleep 300
+done
 progress_step 2 5 "G2 ok (batch done)"
-python3 - <<'PY' || { log "G3 FAILED: corpus too small at bucket 131072"; exit 1; }
+python3 - <<'PY' || { progress_blocked "G3 corpus gate FAILED — regenerate corpus before training"; log "G3 FAILED: corpus too small at bucket 131072"; exit 1; }
 import json, sys
 m = json.load(open("outputs/corpus/train_v1/manifest.json"))
 b = m.get("length_buckets", {}).get("131072", m)
@@ -82,7 +88,21 @@ for arm in ("qk4.3", "qk5.0"):
               f"n={len(pooled_a)}) — REVIEW before approving train1")
 PY
 
-while [ ! -f logs/train1.approved ]; do
+# audit 2.1: the marker is the substantive gate — refuse empty markers and refuse to
+# train if the §4 sweep it references never completed cleanly.
+while :; do
+    if [ -f logs/train1.approved ]; then
+        APP=$(cat logs/train1.approved 2>/dev/null)
+        if [ -z "$APP" ]; then
+            progress_blocked "train1.approved is EMPTY — write a one-line rationale referencing §4 evidence"
+            sleep 600; continue
+        fi
+        if ! grep -q "^done" logs/stage4-queue.done >/dev/null 2>&1; then
+            progress_blocked "approved but stage4 sweep not cleanly done — refusing to train"
+            sleep 600; continue
+        fi
+        break
+    fi
     log "waiting for approval marker logs/train1.approved (§4 + §3 evidence review)"
     progress_blocked "AWAITING APPROVAL: logs/train1.approved (review §4 sweep + weak-axis evidence)"
     sleep 600

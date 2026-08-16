@@ -138,8 +138,9 @@ function readStages(now, runnersAlive) {
     const mpath = marker && path.join(LOGS, marker);
     if (mpath && fs.existsSync(mpath)) {
       const mtxt = fs.readFileSync(mpath, "utf8");
-      const mstate = /^(blocked|failed|skipped)/.test(mtxt) ?
-        (/^blocked/.test(mtxt) ? "blocked" : /^failed/.test(mtxt) ? "failed" : "skipped") : "done";
+      // any FAILED anywhere (e.g. "dry-run FAILED :: verify-env") renders non-done
+      const mstate = /FAILED/.test(mtxt) ? "failed" :
+        (/^blocked/.test(mtxt) ? "blocked" : /^(failed|skipped)/.test(mtxt) ? "failed" : "done");
       out[name] = { stage: name, state: mstate,
                    detail: mtxt.trim().slice(0, 90),
                    done: mstate === "done" ? 1 : 0, total: 1, updated: fs.statSync(mpath).mtimeMs / 1000 };

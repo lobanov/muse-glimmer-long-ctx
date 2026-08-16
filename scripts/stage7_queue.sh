@@ -23,9 +23,18 @@ source "$ROOT/scripts/progress_lib.sh"
 
 log "stage7 armed (pid $$)"
 progress_waiting "waiting for run1 adapter (stage6)"
+GRACE=900  # trainer needs a few min to become visible after docker exec -d
 while :; do
     [ -f logs/train1.launched ] && [ -f outputs/adapters/run1/adapter_config.json ] \
         && ! docker exec "$DEV" pgrep -f 'train_qlora.py' >/dev/null 2>&1 && break
+    # audit 3.1: trainer exited (grace elapsed) with no adapter -> crash, don't wait forever
+    if [ -f logs/train1.launched ] && [ ! -f outputs/adapters/run1/adapter_config.json ] \
+        && [ -n "$(find logs/train1.launched -mmin +15 2>/dev/null)" ] \
+        && ! docker exec "$DEV" pgrep -f 'train_qlora.py' >/dev/null 2>&1; then
+        progress_blocked "train1 CRASHED — no adapter; inspect logs/train-run1.log"
+        log "BLOCKED: trainer exited without adapter — inspect logs/train-run1.log"
+        exit 1
+    fi
     progress_waiting "waiting for run1 adapter"; sleep 300
 done
 progress_step 1 6 "adapter saved"
@@ -37,7 +46,8 @@ $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
 log "merging adapter (export stage 1)"
 progress_step 2 6 "merging adapter"
 bash scripts/export_pipeline.sh outputs/adapters/run1 run1 --stage 1 2>&1 | tail -2 >> logs/stage7-queue.log
-[ -f outputs/merged/run1/config.json ] || { log "ERROR: merge failed"; exit 1; }
+[ -f outputs/merged/run1/config.json ] || { log "ERROR: merge failed"
+    progress_blocked "adapter merge failed (export stage 1) — inspect logs"; exit 1; }
 # mechanical window extension on the MERGED config (same semantics as outputs/arms/stock-524k,
 # see docs/phase4-zeroshot-arms.md): training leaves max_position_embeddings=131072, but
 # §8 evaluates at 256k/512k and vLLM caps max_model_len at the config value — without

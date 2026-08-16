@@ -28,7 +28,10 @@ sleep 20
 if docker exec "$DEV" bash scripts/verify-env.sh 2>&1 | tail -1 | grep -q "ALL CHECKS PASSED"; then
     log "dev recreated; verify-env PASSED"
 else
-    log "ERROR: verify-env failed after recreate — inspect before anything else"; exit 1
+    log "ERROR: verify-env failed after recreate — inspect before anything else"
+    progress_blocked "verify-env FAILED after dev recreate — hard stop (AGENTS rule 4)"
+    echo "dry-run FAILED $(date '+%F %T') :: verify-env after recreate" > logs/stage5-queue.done
+    exit 1
 fi
 
 log "stopping vLLM — GPU free for §7"
