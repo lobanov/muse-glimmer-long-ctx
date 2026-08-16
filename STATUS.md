@@ -261,8 +261,9 @@ effect (uncontrolled k-draws).
   audit reframing: aggregation fragility (k-dependent, noisy, weakly length-linked);
   the 512k=0.222 main-grid cell likely overstates the length effect (k-draws there).
   §4 sweep is now the sole pending decision input for train1 approval.
-- 2026-08-16 09:45: suites filling (synth3 148/189 — first conflicts/set_intersect/
-  chronology data landing; chronology@32k partials ~0.3-0.67 with in-order scoring).
-  LQA lane stalled at 15/45 since ~19:10 yesterday — INVESTIGATE (lane runner may have
-  died after synth3 took the slot; suite-lane runs sequentially). §4 sweep next after
-  suites+agentmem+PPL (stage3), then approval decision for train1.
+- 2026-08-16 09:50: LQA "stall" was a false alarm — the grid COMPLETED at 15 rows
+  (5 ctx × 3 reps; my /45 counter used the wrong denominator). Final: LongCodeQA
+  0.67/0.67/0.67/1.00/0.67 @32k-512k (repo-scale coding holds at 512k — GOAL crit 5
+  baseline in reach; n=3 → wide CI, powering decision still pending). Lane now on
+  synth3 (148/189; conflicts/set_intersect/chronology landing). §4 sweep next after
+  stage3, then the train1 approval decision.
