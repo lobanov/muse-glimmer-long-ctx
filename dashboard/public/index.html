@@ -13,26 +13,23 @@
   main { max-width:1480px; margin:0 auto; padding:20px; }
   h1 { font-size:17px; margin:0 0 2px; }
   .sub { color:var(--dim); font-size:12px; margin-bottom:18px; }
-  /* asymmetric: eval grids get ~2x the width of the pipeline column */
-  .grid2 { display:grid; grid-template-columns:2.1fr 1fr; gap:14px; }
-  @media (max-width:980px){ .grid2{grid-template-columns:1fr} }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
-  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+           padding:12px 14px; margin-top:14px; }
+  .panel > h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em;
               color:var(--dim); margin:0 0 8px; }
   table { border-collapse:collapse; width:100%; font-size:12.5px; }
   td,th { padding:3px 8px 3px 0; text-align:left; border-bottom:1px solid var(--line); }
   th { color:var(--dim); font-weight:normal; }
-  #grids td:nth-child(3) { white-space:nowrap; }   /* ETA cell never wraps */
   .bar { display:inline-block; height:8px; background:var(--line); border-radius:4px;
-         width:220px; vertical-align:middle; margin-right:8px; overflow:hidden; }
+         width:150px; vertical-align:middle; margin-right:8px; overflow:hidden; }
   .bar>i { display:block; height:100%; background:var(--accent); }
   .ok{color:var(--ok)} .off{color:var(--dim)} .warn{color:var(--warn)} .err{color:var(--err)}
   .pill { padding:1px 7px; border-radius:9px; background:var(--line); font-size:11px; }
-  .tail { white-space:pre-wrap; color:var(--dim); font-size:11px; max-height:120px;
-          overflow:auto; border-top:1px solid var(--line); padding-top:6px; }
-  .taskrow td { border-bottom:1px solid var(--line); }
-  .score { color:var(--accent); }
-  a { color:var(--accent); }
+  .tail { white-space:pre-wrap; color:var(--dim); font-size:11px; }
+  #stages .detail, #grids .eta { white-space:nowrap; }
+  #stages td:nth-child(3) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                            max-width:420px; color:var(--dim); font-size:11px; }
+  details summary { cursor:pointer; color:var(--dim); font-size:12px; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -40,27 +37,33 @@
   <h1>Muse Glimmer 30B — 512k Adaptation</h1>
   <div class="sub" id="ts">loading…</div>
 
-  <div class="grid2">
-    <div class="panel"><h2>Eval grids (rows / total)</h2><table id="grids"></table></div>
-    <div class="panel"><h2>Pipeline stages</h2><table id="pipe"></table>
-      <div style="margin-top:10px"><h2>Watchers</h2><div id="watchers"></div></div>
+  <!-- ONE pipeline panel: stages + watchers + collapsed extras -->
+  <div class="panel">
+    <h2>Pipeline</h2>
+    <table id="stages"></table>
+    <div style="margin-top:10px" id="watchers"></div>
+    <details><summary>corpus &amp; environment</summary>
+      <div id="corpus" style="margin-top:8px"></div>
+      <div id="env" class="tail" style="margin-top:6px"></div>
+    </details>
+  </div>
+
+  <!-- ONE results panel: consolidated task × ctx across all grids -->
+  <div class="panel">
+    <h2>Results — all grids consolidated (mean score, n in parens; label filters)</h2>
+    <div style="margin-bottom:8px">
+      <label class="off">label</label>
+      <select id="lsel"></select>
+      <span id="resmeta" class="off"></span>
     </div>
-  </div>
-
-  <div class="panel" style="margin-top:14px"><h2>Selected grid scores (task × ctx)</h2>
-    <select id="gsel"></select>
-    <table id="scores" style="margin-top:8px"></table>
-  </div>
-
-  <div class="grid2" style="margin-top:14px">
-    <div class="panel"><h2>Log tails</h2><div id="tails"></div></div>
-    <div class="panel"><h2>Corpus / env</h2><div id="corpus"></div></div>
+    <table id="results"></table>
   </div>
 </main>
 <script>
 let S = null;
 const $ = (id) => document.getElementById(id);
 const pct = (a,b) => b ? Math.round(100*a/b) : 0;
+const esc = (s) => String(s).replace(/</g,"&lt;");
 
 async function refresh() {
   try { S = await (await fetch("/api/status")).json(); } catch (e) {
@@ -69,74 +72,65 @@ async function refresh() {
   $("ts").textContent = "updated " + new Date(S.ts).toLocaleString() +
     (S.docker.vllm_up ? " · vLLM up" : " · vLLM down");
 
-  $("grids").innerHTML = S.grids.map(g => {
-    const p = pct(g.rows, g.total);
-    const done = g.rows >= g.total;
-    const eta = done ? `<span class="ok">complete</span>`
-      : g.rows === 0 ? `<span class="off">not started</span>`
-      : `<span class="${g.eta === "stalled?" ? "err" : "warn"}">ETA ${g.eta || "…"}${g.done ? " · ~" + new Date(g.done).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : ""}${g.runner ? " · running" : ""}</span>`;
-    return `<tr><td>${g.name}</td>
-      <td><span class="bar"><i style="width:${p}%"></i></span>${g.rows}/${g.total} (${p}%)</td>
-      <td>${eta}</td></tr>`;
-  }).join("");
-
-  const stCls = (s) => s === "done" ? "ok" : s === "running" ? "warn" :
-                s === "blocked" ? "err" : "off";
-  const stEta = (g) => g.state === "done" ? "" :
-    g.eta_human ? ` · ETA ${g.eta_human}` : "";
-  $("pipe").innerHTML = S.stages.map(g => {
+  // ---- single stage chain (grids folded into their owning stage as detail) ----
+  const gridInto = { stock_vllm_le128k:"overnight", stock_vllm_gt128k:"overnight",
+    suite_nolima:"suite", suite_longbench_v2:"suite", suite_longcodeqa:"suite",
+    suite_infbench:"suite", suite_synth3:"suite", stock_cwe:"stage3",
+    suite_agentmem:"stage3", run1_vllm:"stage7" };
+  const openGrids = S.grids.filter(g => g.rows < g.total && g.rows > 0)
+    .map(g => `${(gridInto[g.file]||"?")}←${g.name.split(" ")[0]} ${g.rows}/${g.total}${g.eta&&g.eta!="…"?" ETA "+g.eta:""}`);
+  const stCls = (s) => s==="done"?"ok":s==="running"?"warn":s==="blocked"?"err":"off";
+  $("stages").innerHTML = S.stages.map(g => {
     const p = pct(g.done, g.total);
-    const t = new Date((g.updated || 0) * 1000);
+    const eta = g.state==="done" ? "" : g.eta_human ? ` · ETA ${g.eta_human}` : "";
     return `<tr><td>${g.stage}</td>
       <td><span class="bar" style="width:90px"><i style="width:${p}%"></i></span>` +
-      `<span class="${stCls(g.state)}">${g.state}</span>${stEta(g)}</td>
-      <td class="tail" style="max-height:2.6em;overflow:hidden" title="updated ${t.toLocaleTimeString()}">${String(g.detail || "").replace(/</g,"&lt;")}</td></tr>`;
-  }).join("");
+      `<span class="${stCls(g.state)}">${g.state}</span>${eta}</td>
+      <td>${esc(g.detail||"")}</td></tr>`;
+  }).join("") + (openGrids.length ?
+    `<tr><td class="off">grids in flight</td><td></td><td>${esc(openGrids.join("  ·  "))}</td></tr>` : "");
 
   $("watchers").innerHTML = Object.entries(S.watchers).map(([w, on]) =>
     `<span class="pill ${on ? "ok" : "off"}" style="margin:2px">${w}</span>`).join("");
 
-  const sel = $("gsel");
-  const cur = sel.value;
-  sel.innerHTML = S.grids.filter(g => g.rows > 0)
-    .map(g => `<option value="${g.file}">${g.name}</option>`).join("");
-  if (cur) sel.value = cur;
-
-  $("tails").innerHTML = Object.entries(S.tails).map(([t, lines]) =>
-    `<div style="margin-bottom:8px"><b style="color:var(--fg)">${t}</b>
-     <div class="tail">${lines.join("\n").replace(/</g,"&lt;")}</div></div>`).join("");
-
   const c = S.corpus;
   $("corpus").innerHTML = c ? `<table>
-    <tr><td>rows</td><td>${c.rows}</td><td>tokens</td><td>${(c.tokens/1e6).toFixed(1)}M</td></tr>
-    <tr><td>@131072</td><td>${c.length_buckets?.["131072"]?.rows ?? "?"} rows /
-        ${((c.length_buckets?.["131072"]?.tokens ?? 0)/1e6).toFixed(1)}M tok</td>
-        <td>@262144</td><td>${c.length_buckets?.["262144"]?.rows ?? "?"} rows</td></tr>
+    <tr><td>rows</td><td>${c.rows}</td><td>tokens</td><td>${(c.tokens/1e6).toFixed(1)}M</td>
+        <td>@131072</td><td>${c.length_buckets?.["131072"]?.rows ?? "?"} rows /
+        ${((c.length_buckets?.["131072"]?.tokens ?? 0)/1e6).toFixed(1)}M tok</td></tr>
     ${Object.entries(c.components).map(([k,v]) =>
-      `<tr><td>${k}</td><td>${v.n}/${v.avail ?? "?"} (${v.actual})</td>
-       <td>target</td><td>${v.target}</td></tr>`).join("")}
+      `<tr><td>${k}</td><td>${v.n}/${v.avail ?? "?"} (${v.actual}, target ${v.target})</td></tr>`).join("")}
   </table>` : "no corpus manifest yet";
+  $("env").textContent = (S.docker.ps || "").replace(/\n/g, " · ");
 
-  sel.onchange = loadScores;
-  if (sel.value) loadScores();
+  await loadResults();
 }
 
-async function loadScores() {
-  const f = $("gsel").value; if (!f) return;
-  const rows = await (await fetch("/api/grid/" + f)).json();
+async function loadResults() {
+  const rows = await (await fetch("/api/results")).json();
+  const labels = [...new Set(rows.map(r => r.label))].sort();
+  const cur = $("lsel").value || "stock";
+  $("lsel").innerHTML = labels.map(l => `<option${l===cur?" selected":""}>${l}</option>`).join("");
+  const sel = labels.includes(cur) ? cur : "stock";
+  const view = rows.filter(r => r.label === sel);
+  $("resmeta").textContent = ` — ${view.length} cells from ${new Set(view.map(r=>r.src)).size} grids`;
   const byTask = {};
-  rows.forEach(r => (byTask[r.task] = byTask[r.task] || {})[r.ctx] = r);
-  const ctxs = [...new Set(rows.map(r => r.ctx))].sort((a,b)=>a-b);
-  $("scores").innerHTML = `<tr><th>task</th>${ctxs.map(c=>`<th>${(c/1000)|0}k</th>`).join("")}</tr>` +
-    Object.keys(byTask).sort().map(t =>
-      `<tr class="taskrow"><td>${t}</td>` + ctxs.map(c => {
+  view.forEach(r => (byTask[r.task] = byTask[r.task] || {})[r.ctx] = r);
+  const ctxs = [...new Set(view.map(r => r.ctx))].sort((a,b)=>a-b);
+  $("results").innerHTML =
+    `<tr><th>task</th>${ctxs.map(c=>`<th>${(c/1000)|0}k</th>`).join("")}<th>src</th></tr>` +
+    Object.keys(byTask).sort().map(t => {
+      const srcs = [...new Set(view.filter(r=>r.task===t).map(r=>r.src))].join(",");
+      return `<tr><td>${t}</td>` + ctxs.map(c => {
         const r = byTask[t][c];
         if (!r) return `<td class="off">—</td>`;
         const col = r.mean >= 0.98 ? "ok" : r.mean >= 0.5 ? "warn" : "err";
         return `<td class="${col}">${r.mean.toFixed(3)} <span class="off">(${r.n})</span></td>`;
-      }).join("") + `</tr>`).join("");
+      }).join("") + `<td class="off" style="font-size:11px">${srcs}</td></tr>`;
+    }).join("");
 }
 
+$("lsel").onchange = loadResults;
 refresh();
 setInterval(refresh, 30000);
 </script>

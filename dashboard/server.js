@@ -195,6 +195,26 @@ app.get("/api/status", async (req, res) => {
   });
 });
 
+app.get("/api/results", (req, res) => {
+  /* One consolidated results table: ALL grids, one row per (task, ctx), pooled across
+   * files with per-source provenance. Duplicate cells (same task+ctx in two files)
+   * are pooled by label — arm/run grids keep their own label rows. */
+  const agg = {};
+  for (const g of GRIDS) {
+    for (const r of readJSONL(path.join(EVAL, g.file))) {
+      if (r.error || r.score == null) continue;
+      const k = `${r.task}|${r.target_ctx}|${r.config_label}`;
+      (agg[k] = agg[k] || { task: r.task, ctx: r.target_ctx, label: r.config_label,
+                            src: g.name, n: 0, sum: 0 }).n++;
+      agg[k].sum += r.score;
+    }
+  }
+  res.json(Object.values(agg)
+    .map((c) => ({ task: c.task, ctx: c.ctx, label: c.label, src: c.src, n: c.n,
+                   mean: +(c.sum / c.n).toFixed(3) }))
+    .sort((a, b) => a.task.localeCompare(b.task) || a.label.localeCompare(b.label) || a.ctx - b.ctx));
+});
+
 app.get("/api/grid/:file", (req, res) => {
   const allowed = GRIDS.some((g) => g.file === req.params.file);
   if (!allowed) return res.status(400).json({ error: "unknown grid" });
