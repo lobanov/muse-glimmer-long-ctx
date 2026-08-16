@@ -48,3 +48,13 @@ the knob remains each arm's ONLY variable). All pass.
 Per arm: `VLLM_MODEL=/arms/<arm> docker compose --profile inference up -d vllm`
 (~10 min cold start), then `evals/harness/run_eval.py --config-label <arm>` on the §2 grid
 at 128k–512k first (decision-relevant), full grid if the arm is competitive vs stock.
+
+> **ERRATUM (2026-08-16, superseded by v2.1):** The "Run plan" above is the original
+> pre-revision design (4-value sweep, full-grid-if-competitive). The **authoritative**
+> plan is PLAN.md §4 REVISION (commit `4c875bc`) implemented by `scripts/stage4_queue.sh`
+> v2.1: bracket {qk4.3, qk5.0} only, weak-axis treatment (counting/cwe/nolima
+> @128k+256k ×5 paired reps), niah@64k harm check *vetoing* the signal, infbench
+> weak-axis coverage (infb_codedebug/infb_bookmc ×3), yarn4 inertness control, and a
+> signal-gated 512k extension (pooled paired ≥+10pts, no harm). Includes the
+> 2026-08-16 adversarial-audit fixes (F-1.1 stock enrichment to 5 reps, F-1.2 harm
+> veto, F-1.3 conditional arm markers, F-5.1 infbench cells).

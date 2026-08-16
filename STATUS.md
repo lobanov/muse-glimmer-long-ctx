@@ -275,3 +275,34 @@ effect (uncontrolled k-draws).
   counting/cwe (aggregation), infb_codedebug+bookmc @256k (long-doc code/reasoning),
   NoLiMa (per-length ~0.22-0.67). GPU chain: stage3 (agentmem+PPL) → §4 sweep →
   approval decision.
+
+## 2026-08-16 18:49 — GLM-5.3 adversarial audit of the armed chain; all FIX-NOW findings actioned
+
+Headless `pi -p --provider z.ai --model glm-5.3` review (`logs/adversarial-review-glm53.log`)
+of setup/progress/upcoming phases, every claim re-verified on disk before acting. Notable
+verified findings + fixes (commit follows):
+- **F-1.1** the §4 ≥+10pt pooled gate required a perfect 12/12 (stock 3 reps, 10/12 pairs
+  ceiling-bound; recomputed from disk) → stage4 now enriches stock to 5 paired reps first
+  (`stock_weak5.jsonl`, n=20 pairs).
+- **F-1.2** niah@64k harm check was logged but consumed by nothing → now vetoes both the
+  512k extension (stage4) and the qk training override (stage6).
+- **F-1.3** arm grids were marked `.done` even on failure (permanent silent skip on
+  re-arm) → markers now conditional on expected rows (47+20 / 9), `.failed` otherwise.
+- **F-2.2** stage6 stock globs dropped `stock_cwe`/`suite_nolima` → override + winner-info
+  now see the full weak-axis stock evidence.
+- **F-4.1** snapshot §3 table silently empty for N runs (summarize.py took one path;
+  stderr swallowed) → summarize accepts multiple paths; stderr visible; verified live.
+- **F-5.1/5.2** arms/run1 had no infbench/nolima/LQA/niah_multi coverage (criterion 7
+  adjudicated on in-family tasks only) → stage4 arm grids add infb_codedebug+infb_bookmc
+  ×3; stage7 adds nolima@128/256k, LQA@128k, niah_multi corroborator lanes.
+- **F-5.3** stage8 guard was a fixed 3pt on n=3 cells (near-certain noise BLOCK) → now
+  `max(3pts, stock-cell CI)` (T975 actually used).
+- **F-7.1** export audit never asserted 512k context or artifact size →
+  `muse-glimmer.context_length = 524288` grep + ≤19GiB gate in stage8.
+- **F-7.2** stage9 parity read nan→PASS on missing GGUF cells → missing/incomplete = FAIL.
+- Dashboard: marker prefixes {blocked,failed,skipped} now distinct states; arm grids +
+  run1_short + stock_weak5 in GRIDS; run1 total 162→177 (corroborators).
+- MONITOR items (stall timers, G3 floor, budget pinning, phase-4 doc staleness) logged in
+  the review; phase-4 doc got an ERRATUM pointer to v2.1.
+Stage4 watcher was killed mid-arm-switch (vLLM cold-starting qk4.3, no eval rows, no
+markers) — re-armed with v2.2 script; it will serve stock first for enrichment.

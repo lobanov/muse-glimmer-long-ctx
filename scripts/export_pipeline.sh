@@ -96,7 +96,9 @@ if want 4; then
   echo "$OUT" | grep -q "rope.freq_base = 500000"
   echo "$OUT" | grep -q "final_logit_softcapping = 20"
   echo "$OUT" | grep -q "tokenizer.chat_template"
-  log "stage4: PASS (arch, window, pattern, theta, softcap, chat template)"
+  echo "$OUT" | grep -q "muse-glimmer.context_length = 524288"   # audit F-7.1: the
+  # 512k context metadata is exactly what a converter rewrite could drop silently
+  log "stage4: PASS (arch, window, pattern, theta, softcap, chat template, ctx=512k)"
 fi
 
 # ---- stage 5: imatrix from long-context calibration ----------------------------

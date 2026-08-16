@@ -88,10 +88,13 @@ async function refresh() {
   const gridInto = { stock_vllm_le128k:"overnight", stock_vllm_gt128k:"overnight",
     suite_nolima:"suite", suite_longbench_v2:"suite", suite_longcodeqa:"suite",
     suite_infbench:"suite", suite_synth3:"suite", stock_cwe:"stage3",
-    suite_agentmem:"stage3", run1_vllm:"stage7" };
+    suite_agentmem:"stage3", stock_weak5:"stage4", arm_qk4.3:"stage4",
+    arm_qk5.0:"stage4", arm_yarn4:"stage4", run1_vllm:"stage7",
+    run1_vllm_short:"stage7" };
   const openGrids = S.grids.filter(g => g.rows < g.total && g.rows > 0)
     .map(g => `${(gridInto[g.file]||"?")}←${g.name.split(" ")[0]} ${g.rows}/${g.total}${g.eta&&g.eta!="…"?" ETA "+g.eta:""}`);
-  const stCls = (s) => s==="done"?"ok":s==="running"?"warn":s==="blocked"?"err":"off";
+  const stCls = (s) => s==="done"?"ok":s==="running"?"warn":
+                s==="blocked"||s==="failed"?"err":"off";
   $("stages").innerHTML = S.stages.map(g => {
     const p = pct(g.done, g.total);
     const eta = g.state==="done" ? "" : g.eta_human ? ` · ETA ${g.eta_human}` : "";

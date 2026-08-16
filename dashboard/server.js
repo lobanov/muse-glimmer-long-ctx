@@ -64,6 +64,10 @@ function probe(cmd, args) {
 }
 
 const GRIDS = [
+  { name: "stock weak5 (enrich)", file: "stock_weak5.jsonl", total: 20 },   // audit F-1.1 enrichment
+  { name: "arm qk4.3 (§4)", file: "arm_qk4.3.jsonl", total: 47 },             // 30 primary +5 harm +12 infb (+20 if 512k ext)
+  { name: "arm qk5.0 (§4)", file: "arm_qk5.0.jsonl", total: 47 },
+  { name: "arm yarn4 (control)", file: "arm_yarn4.jsonl", total: 9 },
   { name: "gt128k (>128k grid)", file: "stock_vllm_gt128k.jsonl", total: 216 },
   { name: "le128k (§3 baseline)", file: "stock_vllm_le128k.jsonl", total: 378 },
   { name: "cwe", file: "stock_cwe.jsonl", total: 36 },
@@ -73,7 +77,8 @@ const GRIDS = [
   { name: "InfBench", file: "suite_infbench.jsonl", total: 18 },           // 3 tasks × 2 ctx × depth 0.5 × 3 reps
   { name: "synth3 fill-in", file: "suite_synth3.jsonl", total: 189 },
   { name: "agentmem", file: "suite_agentmem.jsonl", total: 72 },         // 6 ctx × 4 depths × 3 reps (stage3 spec)
-  { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 162 },     // 6 tasks × 3 ctx × 3 depths × 3 reps (stage7; short file separate)
+  { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 177 },     // 6×3×3×3 grid + corroborators: nolima 6, LQA 3, niah_multi 6 (audit F-5.2)
+  { name: "run1 short (≤32k regression)", file: "run1_vllm_short.jsonl", total: 18 },
 ];
 
 /* ETA from per-row timestamps (each JSONL row carries `ts`, naive UTC from the
@@ -132,9 +137,12 @@ function readStages(now, runnersAlive) {
     const marker = STAGE_MARKER[name];
     const mpath = marker && path.join(LOGS, marker);
     if (mpath && fs.existsSync(mpath)) {
-      out[name] = { stage: name, state: fs.readFileSync(mpath, "utf8").startsWith("blocked") ? "blocked" : "done",
-                   detail: fs.readFileSync(mpath, "utf8").trim().slice(0, 90),
-                   done: 1, total: 1, updated: fs.statSync(mpath).mtimeMs / 1000 };
+      const mtxt = fs.readFileSync(mpath, "utf8");
+      const mstate = /^(blocked|failed|skipped)/.test(mtxt) ?
+        (/^blocked/.test(mtxt) ? "blocked" : /^failed/.test(mtxt) ? "failed" : "skipped") : "done";
+      out[name] = { stage: name, state: mstate,
+                   detail: mtxt.trim().slice(0, 90),
+                   done: mstate === "done" ? 1 : 0, total: 1, updated: fs.statSync(mpath).mtimeMs / 1000 };
     }
   }
   // stage3 synthesis (pre-reporting script still mid-flight): agentmem + ppl rows

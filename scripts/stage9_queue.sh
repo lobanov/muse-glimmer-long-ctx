@@ -89,8 +89,11 @@ if not b or not g:
     print("FAIL insufficient data", len(b), len(g)); raise SystemExit
 bad, drains = [], 0
 for d in sorted(set(b) | set(g)):
-    bm = sum(b[d])/len(b[d]) if b.get(d) else float("nan")
-    gm = sum(g[d])/len(g[d]) if g.get(d) else float("nan")
+    # audit F-7.2: a missing/incomplete GGUF depth used to read nan -> not-bad -> PASS
+    if not b.get(d) or not g.get(d) or len(b[d]) < 2 or len(g[d]) < 2:
+        bad.append((d, "missing/incomplete gguf cells")); continue
+    bm = sum(b[d])/len(b[d])
+    gm = sum(g[d])/len(g[d])
     if bm - gm > 0.05: bad.append((d, round(bm,3), round(gm,3)))
 for line in open("outputs/eval/parity_run1_gguf.jsonl"):
     r = json.loads(line)

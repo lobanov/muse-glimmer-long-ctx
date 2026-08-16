@@ -87,6 +87,31 @@ docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     --out outputs/eval/run1_vllm_short.jsonl" \
     >> logs/stage7-grid.log 2>&1 || log "WARN: run1 short-regression partial"
 
+# corroborators (audit F-5.2): PLAN post-review requires counting/cwe gains to be
+# corroborated on held-out families; run1 must also carry the harm-control tasks.
+log "§8 corroborators: NoLiMa + LQA + niah_multi (audit F-5.2)"
+docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+    python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
+    --config-label run1 --plugin nolima --tasks nolima \
+    --ctx 128000,256000 --depths 0.5 --reps 3 \
+    --mode capability --max-tokens 4096 \
+    --out outputs/eval/run1_vllm.jsonl" \
+    >> logs/stage7-grid.log 2>&1 || log "WARN: nolima corroborator partial"
+docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+    python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
+    --config-label run1 --plugin longcodeqa --tasks longcodeqa \
+    --ctx 128000 --depths 0.5 --reps 3 \
+    --mode capability --max-tokens 4096 \
+    --out outputs/eval/run1_vllm.jsonl" \
+    >> logs/stage7-grid.log 2>&1 || log "WARN: LQA corroborator partial"
+docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+    python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
+    --config-label run1 --tasks niah_multi \
+    --ctx 64000,128000 --depths 0.5 --reps 3 \
+    --mode capability --max-tokens 4096 \
+    --out outputs/eval/run1_vllm.jsonl" \
+    >> logs/stage7-grid.log 2>&1 || log "WARN: niah_multi corroborator partial"
+
 log "PPL probe on merged"
 progress_step 5 6 "PPL probe"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \

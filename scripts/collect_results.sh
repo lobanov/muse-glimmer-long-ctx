@@ -26,7 +26,7 @@ if [ -n "$STOCK_FILES" ]; then
   echo "## §3 stock baseline — score by task × ctx (mean ± 95% CI (n))"
   echo '```'
   docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
-    python3 evals/harness/summarize.py $STOCK_FILES" 2>/dev/null
+    python3 evals/harness/summarize.py $STOCK_FILES"
   echo '```'
   echo "## §3 retention vs 128k + decision rule"
   echo '```'
@@ -60,7 +60,7 @@ fi
 # ---- counting error anatomy (most sensitive degradation metric) ------------------
 CNT_FILES=$(ls $E/stock_vllm_*.jsonl $E/run1_vllm*.jsonl $E/abl_*.jsonl 2>/dev/null | tr '\n' ' ')
 if [ -n "$CNT_FILES" ]; then
-  echo "## counting error anatomy (off-by-one undercount = attention dilution)"
+  echo "## counting error anatomy (off-by-one undercount — one live hypothesis; see PLAN §3 erratum)"
   echo '```'
   docker exec -i "$DEV" python3 - $(for f in $CNT_FILES; do echo "/workspaces/muse-glimmer-long-ctx/$f"; done) <<'PY'
 import json, re, sys

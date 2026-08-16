@@ -16,9 +16,10 @@ import sys
 T975 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262}
 
 
-def load(path):
+def load(paths):
     rows = []
-    for g in sorted(glob.glob(path)):
+    files = sorted(sum((glob.glob(p) for p in paths), []))
+    for g in files:
         if g.endswith(".parquet"):
             import pyarrow.parquet as pq
             rows.extend(pq.read_table(g).to_pylist())
@@ -46,7 +47,7 @@ def mean_ci(xs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("path", help="glob: *.parquet or *.jsonl (comma- or multi-glob)")
+    ap.add_argument("path", nargs="+", help="glob(s): *.parquet or *.jsonl")
     ap.add_argument("--by-depth", action="store_true")
     ap.add_argument("--markdown", help="also write markdown table here")
     args = ap.parse_args()

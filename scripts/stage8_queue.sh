@@ -38,6 +38,13 @@ def cells(label, files):
     return d
 stock = cells("stock", glob.glob("outputs/eval/stock_vllm_le128k.jsonl"))
 run1 = cells("run1", glob.glob("outputs/eval/run1_vllm*.jsonl"))
+def ci95(xs):  # audit F-5.3: fixed 3pt on n=3 run1 cells false-BLOCKs on sampling
+    n = len(xs)            # noise (stock counting@32k=0.952, ~30% stochastic misses);
+    if n < 2:              # block only when the drop exceeds the stock cell's CI
+        return 0.0
+    m = sum(xs)/n
+    sd = (sum((x-m)**2 for x in xs)/(n-1)) ** 0.5
+    return T975.get(n-1, 1.96) * sd / n**0.5
 regressions = []
 for k, xs in run1.items():
     if k[1] > 128_000: continue           # guard is the ≤128k regression axis
@@ -45,7 +52,7 @@ for k, xs in run1.items():
     if not s or len(xs) < 2: continue
     am = sum(xs)/len(xs)
     sm = sum(s)/len(s)
-    if sm - am > 0.03:
+    if sm - am > max(0.03, ci95(s)):      # beyond noise AND ≥3pts (audit F-5.3)
         regressions.append((k, round(sm,3), round(am,3)))
 print("BLOCK" if regressions else "GO", regressions[:5])
 PY
@@ -69,6 +76,15 @@ bash scripts/export_pipeline.sh outputs/adapters/run1 run1 --stage 3,4,5,6,7 2>&
 KQ=outputs/gguf/run1/run1-Q4_K_M.gguf
 if [ -f "$KQ" ]; then
     SZ=$(du -h "$KQ" | cut -f1)
+    SZB=$(stat -c%s "$KQ")
+    # audit F-7.1: gate the artifact size (GOAL: ~17GB K-quant inside 32GB VRAM;
+    # a runaway quant must not pass silently). Ceiling 19 GiB.
+    if [ "$SZB" -ge $((19 * 1024 * 1024 * 1024)) ]; then
+        progress_blocked "artifact too large: $SZ (≥19GiB) — quant config regression"
+        echo "blocked-size $(date '+%F %T') :: $SZ" > logs/stage8-queue.done
+        log "ERROR: $KQ is $SZ (≥19GiB) — re-quantize with correct settings"
+        exit 0
+    fi
     progress_done "artifact: $KQ ($SZ)"
     echo "done $(date '+%F %T') artifact=$KQ size=$SZ" > logs/stage8-queue.done
     log "stage8 complete: $KQ ($SZ) — remaining: §9 ablations, §12 on-device (hardware), §14 report"

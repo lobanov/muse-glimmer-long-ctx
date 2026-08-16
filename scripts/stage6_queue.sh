@@ -59,7 +59,10 @@ def cells(label, files):
             if r["config_label"] != label: continue
             d[(r["task"], r["target_ctx"])].append(r["score"])
     return d
-stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
+stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl") +
+          glob.glob("outputs/eval/stock_cwe.jsonl") +
+          glob.glob("outputs/eval/stock_weak5.jsonl") +
+          glob.glob("outputs/eval/suite_nolima.jsonl"))  # audit F-2.2
 for arm in ("qk4.3", "qk5.0"):
     a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
     pooled_a, pooled_s = [], []
@@ -100,9 +103,18 @@ def cells(label, files):
             if r["config_label"] != label: continue
             d[(r["task"], r["target_ctx"])].append(r["score"])
     return d
-stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl"))
+stock = cells("stock", glob.glob("outputs/eval/stock_vllm_*.jsonl") +
+          glob.glob("outputs/eval/stock_cwe.jsonl") +
+          glob.glob("outputs/eval/stock_weak5.jsonl") +
+          glob.glob("outputs/eval/suite_nolima.jsonl"))  # audit F-2.2
 for arm in ("qk4.3", "qk5.0"):
     a = cells(arm, glob.glob(f"outputs/eval/arm_{arm}.jsonl"))
+    # harm veto (audit F-1.2): an arm that damages niah@64k retrieval must
+    # not become a training override, regardless of weak-axis wins.
+    harm = [x for (t, c), xs in a.items() if t == "niah" and c == 64000 for x in xs]
+    harm_ok = bool(harm) and sum(harm)/len(harm) >= 0.9
+    if harm and not harm_ok:
+        print(f"[override] {arm}: HARM niah@64k={sum(harm)/len(harm):.3f} -> veto", file=__import__("sys").stderr)
     wins = 0
     for k, xs in a.items():
         s = stock.get(k)
@@ -110,7 +122,7 @@ for arm in ("qk4.3", "qk5.0"):
         am, sm = sum(xs)/len(xs), sum(s)/len(s)
         if am - sm > 0.15 and len(xs) >= 5:   # pooled-instance significance is judged by the reviewer; 15pt floor
             wins += 1
-    if wins >= 2:
+    if wins >= 2 and harm_ok:
         print(json.dumps({"qk_scale_factor": float(arm[2:])})); break
 else:
     print("")
