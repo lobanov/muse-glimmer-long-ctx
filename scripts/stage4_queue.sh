@@ -19,9 +19,12 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 COMPOSE="docker compose -f .devcontainer/docker-compose.yml"
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage4-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
+AI=0
 
 log "stage4-v2.1 armed (pid $$); waiting for stage3"
-while [ ! -f logs/stage3-queue.done ]; do sleep 300; done
+progress_waiting "waiting for stage3 (agentmem+PPL)"
+while [ ! -f logs/stage3-queue.done ]; do progress_waiting "waiting for stage3 (agentmem+PPL)"; sleep 300; done
 
 serve_arm() {  # serve_arm <path>
     $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
@@ -81,8 +84,10 @@ PY
 }
 
 for ARM in qk4.3 qk5.0; do
+    AI=$((AI+1))
     [ -f "logs/stage4-$ARM.done" ] && { log "$ARM done (skip)"; continue; }
     log "== arm $ARM: serving =="
+    progress_step $AI 4 "arm $ARM grids"
     serve_arm /arms/$ARM || { log "ERROR: vLLM never came up for $ARM"; continue; }
     log "== arm $ARM: primary grids (counting,cwe,nolima @128k,256k ×5 reps) =="
     docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
@@ -121,6 +126,7 @@ done
 # actually falsify the inertness prediction, not just confirm a saturated ceiling)
 if [ ! -f logs/stage4-yarn4.done ]; then
     log "== yarn4 control =="
+progress_step 3 4 "yarn4 control probe"
     serve_arm /arms/yarn4 || log "ERROR: yarn4 never served"
     docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
         python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
@@ -133,5 +139,6 @@ fi
 
 # leave stock serving for the stage5+ chain
 serve_arm /arms/stock-524k || log "WARN: could not restore stock serving"
+progress_step 4 4 "restoring stock serving"
 echo "done $(date '+%F %T')" > logs/stage4-queue.done
 log "stage4-v2.1 complete: $(cat logs/stage4-queue.done)"

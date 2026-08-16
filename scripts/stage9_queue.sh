@@ -22,9 +22,12 @@ MMPROJ=/cache/weights/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf
 DRAFT=/cache/weights/dflash-Muse-Glimmer-30B-Q4_K_M.gguf
 STOCK=/cache/weights/Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage9-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
 
 log "stage9 armed (pid $$)"
-while [ ! -f logs/stage8-queue.done ]; do sleep 300; done
+progress_waiting "waiting for stage8 (export artifact)"
+while [ ! -f logs/stage8-queue.done ]; do progress_waiting "waiting for stage8 (export artifact)"; sleep 300; done
+progress_step 1 5 "artifact present; BF16 parity"
 grep -q "^done" logs/stage8-queue.done || { echo "skipped (stage8 not clean)" > logs/stage9-queue.done; log "stage8 not done-clean — skipping"; exit 0; }
 [ -f "$GGUF" ] || { echo "failed (artifact missing)" > logs/stage9-queue.done; log "ERROR: $GGUF missing"; exit 1; }
 log "artifact present: $(du -h "$GGUF" | cut -f1)"
@@ -49,6 +52,7 @@ $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
 
 # ---- 2. GGUF parity side ---------------------------------------------------------
 log "starting llama-server on new GGUF (-c 163840)"
+progress_step 2 5 "GGUF parity grid"
 $COMPOSE --profile llamacpp run -d llamacpp \
     llama-server -m /cache/weights/export/run1/run1-Q4_K_M.gguf --mmproj "$MMPROJ" \
     -ngl 99 -c 163840 --host 0.0.0.0 --port 8080 --jinja \
@@ -95,6 +99,7 @@ print(("PASS" if not bad else f"FAIL {bad}") + (f" | length-drains: {drains}" if
 PY
 )
 log "parity verdict: $VERDICT"
+progress_step 3 5 "verdict: $VERDICT"
 
 # ---- 4. DFlash acceptance (defensive) --------------------------------------------
 $COMPOSE --profile llamacpp run --rm --no-deps llamacpp bash -c "
@@ -106,5 +111,7 @@ timeout 900 \$B/llama-bench -m $STOCK -md $DRAFT -p 512 -n 128 2>&1 | tail -6
 " >> logs/stage9-dflash.log 2>&1 || log "WARN: llama-bench draft run failed/unsupported — inspect logs/stage9-dflash.log"
 
 docker rm -f "$LLNAME" >/dev/null 2>&1 || true
+progress_step 4 5 "dflash acceptance check"
+progress_done "quant-parity: $VERDICT"
 echo "done $(date '+%F %T') :: $VERDICT" > logs/stage9-queue.done
 log "stage9 complete — $VERDICT (results: outputs/eval/parity_run1_*.jsonl, logs/stage9-dflash.log)"

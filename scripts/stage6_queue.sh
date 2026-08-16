@@ -15,8 +15,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage6-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
 
 log "stage6-v2 armed (pid $$): approval-gated (requires logs/train1.approved)"
+progress_waiting "gates: dry-run OK, corpus, approval marker"
 
 while :; do
     if [ -f logs/stage5-queue.done ]; then
@@ -25,11 +27,13 @@ while :; do
             log "BLOCKED: §7 dry-run failed — fix trainer wiring first"; exit 1
         fi
     fi
-    sleep 300
+    progress_waiting "gate G1: stage5 dry-run"; sleep 300
 done
 log "G1 ok: stage5 dry-run OK"
+progress_step 1 5 "G1 ok"
 
-while pgrep -f 'batch_generate' >/dev/null; do sleep 300; done
+while pgrep -f 'batch_generate' >/dev/null; do progress_waiting "gate G2: corpus batch running"; sleep 300; done
+progress_step 2 5 "G2 ok (batch done)"
 python3 - <<'PY' || { log "G3 FAILED: corpus too small at bucket 131072"; exit 1; }
 import json, sys
 m = json.load(open("outputs/corpus/train_v1/manifest.json"))
@@ -77,9 +81,11 @@ PY
 
 while [ ! -f logs/train1.approved ]; do
     log "waiting for approval marker logs/train1.approved (§4 + §3 evidence review)"
+    progress_blocked "AWAITING APPROVAL: logs/train1.approved (review §4 sweep + weak-axis evidence)"
     sleep 600
 done
 log "APPROVED: $(cat logs/train1.approved 2>/dev/null)"
+progress_step 4 5 "approved"
 
 OVERRIDE_JSON=$(python3 - <<'PY'
 import glob, json
@@ -120,5 +126,6 @@ docker exec -d "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     --micro-batch 1 --grad-accum 8 --seq-bucket 131072 --epochs 1 \
     $([ -n \"$OVERRIDE_JSON\" ] && echo \"--config-override '$OVERRIDE_JSON'\") \
     > /workspaces/muse-glimmer-long-ctx/logs/train-run1.log 2>&1"
+progress_step 5 5 "train1 launched"
 echo "launched $(date '+%F %T') override=${OVERRIDE_JSON:-none}" > logs/train1.launched
 log "§7 run1 launched (post-approval) — monitor logs/train-run1.log"

@@ -11,6 +11,7 @@ const { execFile } = require("child_process");
 const ROOT = path.resolve(__dirname, "..");
 const LOGS = path.join(ROOT, "logs");
 const EVAL = path.join(ROOT, "outputs", "eval");
+const PROGRESS = path.join(ROOT, "outputs", "progress");
 const CORPUS = path.join(ROOT, "outputs", "corpus");
 const PORT = process.env.PORT || 8787;
 const DEV = "muse-glimmer-long-ctx-dev-1";
@@ -106,6 +107,49 @@ function etaFor(file, rows, total, now, runnerAlive) {
   return { eta: "…", rate: 0 };
 }
 
+/* Stage chain for the pipeline panel: progress files are authoritative; stages
+ * without one are synthesized from markers (done) — e.g. stages that completed
+ * before per-stage reporting existed — or from live grid rows (stage3's two
+ * substages: agentmem grid + ppl probe). */
+const STAGE_ORDER = [
+  "overnight", "suite", "suite_lane", "stage3", "stage4", "stage5",
+  "stage6", "stage7", "stage8", "stage9",
+];
+const STAGE_MARKER = {
+  overnight: "overnight-queue.done", suite: "suite-queue.done",
+  suite_lane: "suite-lane.done", stage3: "stage3-queue.done",
+  stage4: "stage4-queue.done", stage5: "stage5-queue.done",
+  stage6: "train1.launched", stage7: "stage7-queue.done",
+  stage8: "stage8-queue.done", stage9: "stage9-queue.done",
+};
+function readStages(now, runnersAlive) {
+  const out = {};
+  for (const name of STAGE_ORDER) {
+    const f = path.join(PROGRESS, `${name}.json`);
+    let doc = null;
+    try { doc = JSON.parse(fs.readFileSync(f, "utf8")); } catch { /* none */ }
+    if (doc) { out[name] = doc; continue; }
+    const marker = STAGE_MARKER[name];
+    const mpath = marker && path.join(LOGS, marker);
+    if (mpath && fs.existsSync(mpath)) {
+      out[name] = { stage: name, state: fs.readFileSync(mpath, "utf8").startsWith("blocked") ? "blocked" : "done",
+                   detail: fs.readFileSync(mpath, "utf8").trim().slice(0, 90),
+                   done: 1, total: 1, updated: fs.statSync(mpath).mtimeMs / 1000 };
+    }
+  }
+  // stage3 synthesis (pre-reporting script still mid-flight): agentmem + ppl rows
+  if (!out.stage3) {
+    const am = readJSONL(path.join(EVAL, "suite_agentmem.jsonl")).length;
+    const ppl = readJSONL(path.join(EVAL, "ppl_stock.jsonl")).length;
+    const total = 72 + 10, done = am + ppl;
+    out.stage3 = { stage: "stage3", state: done >= total ? "done" : "running",
+      detail: `agentmem ${am}/72 · ppl ${ppl}/10 (synthesized from grid rows)`,
+      done, total, updated: now / 1000,
+      eta_human: etaFor("suite_agentmem.jsonl", readJSONL(path.join(EVAL, "suite_agentmem.jsonl")), 72, now, runnersAlive["suite_agentmem.jsonl"])?.eta || null };
+  }
+  return STAGE_ORDER.map((k) => out[k]).filter(Boolean);
+}
+
 app.get("/api/status", async (req, res) => {
   const now = Date.now();
   // runner-aliveness per grid (by output filename in the process cmdline)
@@ -115,6 +159,7 @@ app.get("/api/status", async (req, res) => {
     const r = await probe("docker", ["exec", DEV, "pgrep", "-f", `run_eval.py.*${g.file}`]);
     alive[g.file] = r.ok && r.out.length > 0;
   }
+  const stages = readStages(now, alive);
   const grids = GRIDS.map((g) => {
     const p = path.join(EVAL, g.file);
     const rows = readJSONL(p);
@@ -145,7 +190,7 @@ app.get("/api/status", async (req, res) => {
     "http://vllm:8000/v1/models"]);
   res.json({
     ts: new Date().toISOString(),
-    grids, watchers, markers, tails, corpus,
+    stages, grids, watchers, markers, tails, corpus,
     docker: { ps: dockerPs.out, vllm_up: vllm.ok && vllm.out.includes("muse-glimmer") },
   });
 });

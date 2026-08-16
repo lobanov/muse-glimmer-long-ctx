@@ -14,9 +14,12 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 COMPOSE="docker compose -f .devcontainer/docker-compose.yml"
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage8-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
 
 log "stage8 armed (pid $$)"
-while [ ! -f logs/stage7-queue.done ]; do sleep 300; done
+progress_waiting "waiting for stage7 (§8 eval)"
+while [ ! -f logs/stage7-queue.done ]; do progress_waiting "waiting for stage7 (§8 eval)"; sleep 300; done
+progress_step 1 4 "stage7 done; regression guard"
 
 # G2: regression guard (stock comparison on shared cells; any beyond-CI drop >3pts blocks)
 VERDICT=$(python3 - <<'PY'
@@ -49,20 +52,24 @@ PY
 )
 log "G2 verdict: $VERDICT"
 case "$VERDICT" in
-    BLOCK*) echo "blocked-for-decision $(date '+%F %T') :: $VERDICT" > logs/stage8-queue.done
+    BLOCK*) progress_blocked "≤128k regression — fallback decision required"
+        echo "blocked-for-decision $(date '+%F %T') :: $VERDICT" > logs/stage8-queue.done
         log "§11 export BLOCKED — ≤128k regression detected; decide fallback (BF16-LoRA / data mix) per PLAN §10"
         exit 0;;
 esac
 
 log "freeing GPU (stop vLLM)"
+progress_step 2 4 "guard GO; freeing GPU"
 $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
 
 log "export stages 3–7"
+progress_step 3 4 "export chain (convert/imatrix/quantize/dflash)"
 bash scripts/export_pipeline.sh outputs/adapters/run1 run1 --stage 3,4,5,6,7 2>&1 \
     | while read -r l; do log "export: $l"; done
 KQ=outputs/gguf/run1/run1-Q4_K_M.gguf
 if [ -f "$KQ" ]; then
     SZ=$(du -h "$KQ" | cut -f1)
+    progress_done "artifact: $KQ ($SZ)"
     echo "done $(date '+%F %T') artifact=$KQ size=$SZ" > logs/stage8-queue.done
     log "stage8 complete: $KQ ($SZ) — remaining: §9 ablations, §12 on-device (hardware), §14 report"
 else

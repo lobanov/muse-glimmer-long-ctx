@@ -42,7 +42,7 @@
 
   <div class="grid2">
     <div class="panel"><h2>Eval grids (rows / total)</h2><table id="grids"></table></div>
-    <div class="panel"><h2>Pipeline</h2><table id="pipe"></table>
+    <div class="panel"><h2>Pipeline stages</h2><table id="pipe"></table>
       <div style="margin-top:10px"><h2>Watchers</h2><div id="watchers"></div></div>
     </div>
   </div>
@@ -80,11 +80,17 @@ async function refresh() {
       <td>${eta}</td></tr>`;
   }).join("");
 
-  $("pipe").innerHTML = Object.entries(S.markers).map(([m, v]) => {
-    const done = v != null;
-    return `<tr><td>${m}</td><td>${done ? `<span class="ok">done</span>` :
-      `<span class="off">pending</span>`}</td>
-      <td class="tail" style="max-height:2.4em;overflow:hidden">${done ? String(v).slice(0,80) : ""}</td></tr>`;
+  const stCls = (s) => s === "done" ? "ok" : s === "running" ? "warn" :
+                s === "blocked" ? "err" : "off";
+  const stEta = (g) => g.state === "done" ? "" :
+    g.eta_human ? ` · ETA ${g.eta_human}` : "";
+  $("pipe").innerHTML = S.stages.map(g => {
+    const p = pct(g.done, g.total);
+    const t = new Date((g.updated || 0) * 1000);
+    return `<tr><td>${g.stage}</td>
+      <td><span class="bar" style="width:90px"><i style="width:${p}%"></i></span>` +
+      `<span class="${stCls(g.state)}">${g.state}</span>${stEta(g)}</td>
+      <td class="tail" style="max-height:2.6em;overflow:hidden" title="updated ${t.toLocaleTimeString()}">${String(g.detail || "").replace(/</g,"&lt;")}</td></tr>`;
   }).join("");
 
   $("watchers").innerHTML = Object.entries(S.watchers).map(([w, on]) =>

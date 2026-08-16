@@ -13,10 +13,13 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 COMPOSE="docker compose -f .devcontainer/docker-compose.yml"
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage5-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
 
 log "stage5 armed (pid $$); waiting for stage4"
-while [ ! -f logs/stage4-queue.done ]; do sleep 300; done
+progress_waiting "waiting for stage4 (weak-axis sweep)"
+while [ ! -f logs/stage4-queue.done ]; do progress_waiting "waiting for stage4 (weak-axis sweep)"; sleep 300; done
 log "stage4 done; refreshing dev container (new image: gguf dep)"
+progress_step 1 3 "dev refresh + verify-env"
 
 $COMPOSE stop dev >/dev/null 2>&1
 $COMPOSE rm -f dev >/dev/null 2>&1
@@ -29,18 +32,22 @@ else
 fi
 
 log "stopping vLLM — GPU free for §7"
+progress_step 2 3 "stopping vLLM"
 $COMPOSE --profile inference stop vllm >/dev/null 2>&1
 sleep 15
 
 log "running §7 trainer --dry-run (qlora, r32, all-scope)"
+progress_step 3 3 "trainer dry-run"
 DRY=$(docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 src/muse_longctx/train_qlora.py --mode qlora --lora-rank 32 --lora-scope all \
     --dry-run 2>&1 | tail -25")
 echo "$DRY" | tail -8 >> logs/stage5-queue.log
 if echo "$DRY" | grep -q "forward+backward OK"; then
+    progress_done "dry-run OK — GPU free, training-ready"
     echo "dry-run OK $(date '+%F %T')" > logs/stage5-queue.done
     log "stage5 complete — GPU left FREE, training-ready (corpus: outputs/corpus/train_v1)"
 else
+    progress_blocked "dry-run FAILED — fix trainer wiring"
     echo "dry-run FAILED $(date '+%F %T')" > logs/stage5-queue.done
     log "ERROR: dry-run failed — full output above; fix before training"
 fi

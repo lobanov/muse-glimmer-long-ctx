@@ -19,19 +19,23 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 COMPOSE="docker compose -f .devcontainer/docker-compose.yml"
 log() { echo "[$(date '+%F %T')] $*" >> logs/stage7-queue.log; }
+source "$ROOT/scripts/progress_lib.sh"
 
 log "stage7 armed (pid $$)"
+progress_waiting "waiting for run1 adapter (stage6)"
 while :; do
     [ -f logs/train1.launched ] && [ -f outputs/adapters/run1/adapter_config.json ] \
         && ! docker exec "$DEV" pgrep -f 'train_qlora.py' >/dev/null 2>&1 && break
-    sleep 300
+    progress_waiting "waiting for run1 adapter"; sleep 300
 done
+progress_step 1 6 "adapter saved"
 log "G1+G2 ok: adapter saved, trainer exited"
 
 # GPU must be free (stage5/6 chain leaves vLLM stopped after dry-run; verify anyway)
 $COMPOSE --profile inference stop vllm >/dev/null 2>&1; sleep 10
 
 log "merging adapter (export stage 1)"
+progress_step 2 6 "merging adapter"
 bash scripts/export_pipeline.sh outputs/adapters/run1 run1 --stage 1 2>&1 | tail -2 >> logs/stage7-queue.log
 [ -f outputs/merged/run1/config.json ] || { log "ERROR: merge failed"; exit 1; }
 # mechanical window extension on the MERGED config (same semantics as outputs/arms/stock-524k,
@@ -55,6 +59,7 @@ print('processor ok:', type(p).__name__)" >> logs/stage7-queue.log 2>&1 \
   || { log "ERROR: merged dir missing processor files"; exit 1; }
 
 log "serving merged @524288"
+progress_step 3 6 "serving merged @524288"
 VLLM_MODEL=/outputs/merged/run1 VLLM_MAX_MODEL_LEN=524288 \
     $COMPOSE --profile inference up -d vllm >/dev/null 2>&1
 UP=0
@@ -66,6 +71,7 @@ done
 log "merged serving"
 
 log "§8 grid: run1 decision subset + ≤32k regression"
+progress_step 4 6 "§8 grids"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
     --config-label run1 --tasks niah,semantic,multihop,abstain,counting,cwe \
@@ -82,11 +88,13 @@ docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     >> logs/stage7-grid.log 2>&1 || log "WARN: run1 short-regression partial"
 
 log "PPL probe on merged"
+progress_step 5 6 "PPL probe"
 docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 evals/ppl_probe.py --base-url http://vllm:8000/v1 --config-label run1-merged \
     --ctx 32000,131072,262144,393216,524288 --reps 2 \
     --out outputs/eval/ppl_run1.jsonl" >> logs/ppl-probe.log 2>&1 || log "WARN: ppl partial"
 
 bash scripts/collect_results.sh >/dev/null 2>&1 || true
+progress_step 6 6 "snapshot refreshed"
 echo "done $(date '+%F %T')" > logs/stage7-queue.done
 log "stage7 complete — results in docs/results-snapshot.md; next decision: §9 ablations / §11 export (stage8)"
