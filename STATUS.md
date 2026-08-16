@@ -2,7 +2,7 @@
 
 Short-form progress ledger, updated as phases progress. Detail lives in `docs/` (per-phase
 reports); decisions and results of record live in `PLAN.md`/`CONTRIBUTING.md`.
-Last updated: 2026-08-15 15:24.
+Last updated: 2026-08-16 09:45.
 
 ## Interim results (REGENERATED from disk 2026-08-15 23:40 — computed, not hand-typed;
 per-cell n in parens; n<9 = partial; — = queued)
@@ -12,13 +12,20 @@ per-cell n in parens; n<9 = partial; — = queued)
 | task | 32k | 64k | 128k | 192k | 256k | 384k | 512k |
 |---|---|---|---|---|---|---|---|
 | niah | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
+| niah_multi | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
+| multihop (2-hop) | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
 | semantic (NoLiMa-style) | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
-| multihop (2-hop) | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(5) |
-| niah_multi | 1.000(21) | 1.000(21) | 1.000(21) | — | — | — | — |
-| abstain | 1.000(21) | 1.000(21) | 1.000(21) | — | — | — | — |
-| counting | 0.952(21) | 0.762(21) | 0.476(21) | 0.667(9) | 0.667(9) | 0.667(9) | 0.500(4) |
+| abstain | 1.000(21) | 1.000(21) | 1.000(21) | 1.000(9) | 1.000(9) | 1.000(9) | 1.000(9) |
+| counting | 0.952(21) | 0.762(21) | 0.476(21) | 0.667(9) | 0.667(9) | 0.667(9) | **0.222(9)** |
 | cwe (8-word freq compare) | 0.778(9) | 0.889(9) | 0.889(9) | — | 0.778(9) | — | — |
 | official NoLiMa | 0.444(9) | 0.556(9) | 0.444(9) | — | 0.667(9) | 0.222(9) | 0.444(9) |
+
+**§3 grids COMPLETE (378 + 216 cells)** — report: `docs/phase3-stock-baseline.md`.
+Decision-rule verdict: 100% retrieval retention through 512k → strengthen-qualify-deploy
+formally taken. k-matched counting (80/80): no clean length trend at matched k (128k is a
+local dip; 256k recovers; capability≈greedy) → aggregation fragility confirmed,
+dilution-as-length-mechanism weakened; the 512k=0.222 cell likely overstates the length
+effect (uncontrolled k-draws).
 
 - **Stock Glimmer retrieves AND 2-hop-reasons perfectly zero-shot at 4× nominal context**
   (every depth incl. 0%/100%, up to 463k-token prompts). §3's ≥85%-retention rule is
@@ -254,3 +261,8 @@ per-cell n in parens; n<9 = partial; — = queued)
   audit reframing: aggregation fragility (k-dependent, noisy, weakly length-linked);
   the 512k=0.222 main-grid cell likely overstates the length effect (k-draws there).
   §4 sweep is now the sole pending decision input for train1 approval.
+- 2026-08-16 09:45: suites filling (synth3 148/189 — first conflicts/set_intersect/
+  chronology data landing; chronology@32k partials ~0.3-0.67 with in-order scoring).
+  LQA lane stalled at 15/45 since ~19:10 yesterday — INVESTIGATE (lane runner may have
+  died after synth3 took the slot; suite-lane runs sequentially). §4 sweep next after
+  suites+agentmem+PPL (stage3), then approval decision for train1.
