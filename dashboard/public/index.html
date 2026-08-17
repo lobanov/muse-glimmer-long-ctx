@@ -65,6 +65,12 @@
     <table id="results"></table>
   </div>
 
+  <!-- InfBench true-length bands (goal afe6584b) -->
+  <div class="panel">
+    <h2>InfBench — true-length bands (sampled vs greedy; the old "256k cliff" was a length-cache artifact)</h2>
+    <table id="infb"></table>
+  </div>
+
   <!-- Logs accordion: one section per ACTIVE stage (waiting/blocked/running) -->
   <div class="panel">
     <h2>Logs — active stages</h2>
@@ -117,6 +123,19 @@ async function refresh() {
       `<tr><td>${k}</td><td>${v.n}/${v.avail ?? "?"} (${v.actual}, target ${v.target})</td></tr>`).join("")}
   </table>` : "no corpus manifest yet";
   $("env").textContent = (S.docker.ps || "").replace(/\n/g, " · ");
+
+  // ---- infb true-length bands table ----
+  if (S.infb && S.infb.length) {
+    $("infb").innerHTML =
+      `<tr><th>task</th><th>true band</th><th>actual tok</th><th>mode</th><th>score</th><th>n</th></tr>` +
+      S.infb.map((b) => {
+        const col = b.mean >= 0.667 ? "ok" : b.mean >= 0.334 ? "warn" : "err";
+        const tok = b.trueMin ? `${Math.round(b.trueMin/1000)}-${Math.round(b.trueMax/1000)}k` : "?";
+        return `<tr><td>${b.task}</td><td>${b.band}</td><td class="off">${tok}</td>` +
+          `<td class="${b.mode === "parity" ? "off" : ""}">${b.mode}</td>` +
+          `<td class="${col}">${b.mean.toFixed(3)}</td><td class="off">${b.n}</td></tr>`;
+      }).join("");
+  } else { $("infb").closest(".panel").style.display = "none"; }
 
   // ---- logs accordion: sections only for ACTIVE stages (waiting/running/blocked),
   // ---- each with per-log <details> inside; auto-open the most recently active ----

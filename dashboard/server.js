@@ -75,8 +75,7 @@ const GRIDS = [
   { name: "LongBench v2", file: "suite_longbench_v2.jsonl", total: 12 },   // 4 ctx × depth 0.5 × 3 reps (suite_lane/suite_queue spec)
   { name: "LongCodeQA", file: "suite_longcodeqa.jsonl", total: 15 },       // 5 ctx × depth 0.5 × 3 reps
   { name: "InfBench", file: "suite_infbench.jsonl", total: 18 },           // 3 tasks × 2 ctx × depth 0.5 × 3 reps
-  { name: "infb codedebug 160-200k (true)", file: "infb_infb_codedebug_170-200k_capability.jsonl", total: 3 },
-  { name: "infb bookmc bands (true)", file: "infb_infb_bookmc_400-500k_capability.jsonl", total: 3 },
+  { name: "RULER 128-512k (stock)", file: "ruler_gt128k.jsonl", total: 48 },
   { name: "synth3 fill-in", file: "suite_synth3.jsonl", total: 189 },
   { name: "agentmem", file: "suite_agentmem.jsonl", total: 72 },         // 6 ctx × 4 depths × 3 reps (stage3 spec)
   { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 177 },     // 6×3×3×3 grid + corroborators: nolima 6, LQA 3, niah_multi 6 (audit F-5.2)
@@ -223,6 +222,29 @@ app.get("/api/status", async (req, res) => {
     stages, grids, watchers, markers, stageLogs, corpus,
     docker: { ps: dockerPs.out, vllm_up: vllm.ok && vllm.out.includes("muse-glimmer") },
   });
+});
+
+app.get("/api/infb", (req, res) => {
+  /* InfBench honest-length bands (goal afe6584b): infb_infb_<task>_<band>_<mode>.jsonl
+   * grouped by (task, band, mode) with true-token ranges from expected.ctx_tokens. */
+  const fs = require("fs");
+  const out = [];
+  for (const f of fs.readdirSync(EVAL).sort()) {
+    const m = f.match(/^infb_infb_([a-z]+)_(\d+-\d+k)_(capability|parity)\.jsonl$/);
+    if (!m) continue;
+    try {
+      const rows = fs.readFileSync(path.join(EVAL, f), "utf8").trim().split("\n")
+        .filter(Boolean).map((l) => JSON.parse(l)).filter((r) => !r.error);
+      if (!rows.length) continue;
+      const toks = rows.map((r) => r.expected && r.expected.ctx_tokens).filter(Boolean);
+      out.push({ task: "infb_" + m[1], band: m[2], mode: m[3], n: rows.length,
+                 hits: rows.reduce((a, r) => a + r.score, 0),
+                 mean: +(rows.reduce((a, r) => a + r.score, 0) / rows.length).toFixed(3),
+                 trueMin: toks.length ? Math.min(...toks) : null,
+                 trueMax: toks.length ? Math.max(...toks) : null });
+    } catch { /* skip unreadable */ }
+  }
+  res.json(out);
 });
 
 app.get("/api/results", (req, res) => {
