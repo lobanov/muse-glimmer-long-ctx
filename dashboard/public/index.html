@@ -65,6 +65,12 @@
     <table id="results"></table>
   </div>
 
+  <!-- Workload ledger: running / queued / completed (goal afe6584b) -->
+  <div class="panel">
+    <h2>Workloads — completed · running · queued (current campaign)</h2>
+    <table id="wl"></table>
+  </div>
+
   <!-- InfBench true-length bands (goal afe6584b) -->
   <div class="panel">
     <h2>InfBench — true-length bands (sampled vs greedy; the old "256k cliff" was a length-cache artifact)</h2>
@@ -123,6 +129,26 @@ async function refresh() {
       `<tr><td>${k}</td><td>${v.n}/${v.avail ?? "?"} (${v.actual}, target ${v.target})</td></tr>`).join("")}
   </table>` : "no corpus manifest yet";
   $("env").textContent = (S.docker.ps || "").replace(/\n/g, " · ");
+
+  // ---- workload ledger ----
+  if (S.workloads && S.workloads.length) {
+    const ord = { "complete": 0, "complete (unmarked)": 1, "running": 2, "partial": 3,
+                  "queued": 4, "waiting GPU": 4, "armed": 4, "invalid": 5,
+                  "cancelled": 6, "not running": 7 };
+    const cls = (s) => s.startsWith("complete") ? "ok" : s === "running" ? "warn" :
+                s === "partial" ? "warn" : s === "invalid" ? "err" :
+                s === "cancelled" ? "err" : "off";
+    const groups = {};
+    S.workloads.forEach((w) => (groups[w.group] = groups[w.group] || []).push(w));
+    $("wl").innerHTML = Object.entries(groups).map(([g, ws]) =>
+      `<tr><th colspan="4" style="padding-top:8px">${g}</th></tr>` +
+      ws.slice().sort((a, b) => (ord[a.state] ?? 9) - (ord[b.state] ?? 9)).map((w) =>
+        `<tr><td>${w.label}</td>` +
+        `<td class="${cls(w.state)}">${w.state}</td>` +
+        `<td>${w.total ? (w.rows ?? 0) + "/" + w.total : "—"}</td>` +
+        `<td>${w.total ? `<span class="bar" style="width:60px"><i style="width:${Math.round(100 * (w.rows ?? 0) / w.total)}%"></i></span>` : ""}</td></tr>`
+      ).join("")).join("");
+  } else { $("wl").closest(".panel").style.display = "none"; }
 
   // ---- infb true-length bands table ----
   if (S.infb && S.infb.length) {

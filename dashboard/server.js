@@ -224,6 +224,95 @@ app.get("/api/status", async (req, res) => {
   });
 });
 
+app.get("/api/workloads", (req, res) => {
+  /* Goal afe6584b workload ledger: every eval workload in the current campaign with
+   * state = running | queued | complete | partial | invalid, derived from:
+   *   markers logs/infbands|*.done, live run_eval argv (docker exec), JSONL rows,
+   *   .soup-invalid renames. Queued = a waiting chain script (wait-loop pids). */
+  const { execSync } = require("child_process");
+  const mk = (m) => fs.existsSync(path.join(LOGS, m));
+  let live = [];
+  try {
+    live = execSync(
+      "docker exec " + DEV + " pgrep -af run_eval 2>/dev/null || true",
+      { timeout: 8000, encoding: "utf8" }).trim().split("\n")
+      .filter((l) => l.includes("run_eval.py")).map((l) => l.trim());
+  } catch { /* dev down */ }
+  const rowsMatch = (frag) => live.some((l) => l.includes(frag));
+  const countRows = (f) => { try {
+    return fs.readFileSync(path.join(EVAL, f), "utf8").trim().split("\n")
+      .filter(Boolean).length; } catch { return 0; } };
+
+  const W = [];
+  const push = (id, group, label, total, marker, file, liveFrag) => {
+    const rows = file ? countRows(file) : 0;
+    let state = "queued";
+    if (mk(marker)) state = rows >= total ? "complete" : "partial";
+    else if (rowsMatch(liveFrag || id)) state = "running";
+    else if (rows >= total) state = "complete (unmarked)";
+    else if (rows > 0) state = "partial";
+    W.push({ id, group, label, total, rows, state });
+  };
+
+  // ---- goal afe6584b lanes (marker dirs: logs/infbands/ + logs/) ----
+  const bands = [
+    ["infb_codedebug", "100-140k", 3, 100000, 140000],
+    ["infb_codedebug", "140-170k", 3, 140000, 170000],
+    ["infb_codedebug", "170-200k", 3, 170000, 200000],
+  ];
+  for (const [task, tag, n] of bands) {
+    const capFile = `infb_${task}_${tag}_capability.jsonl`;
+    if (!fs.existsSync(path.join(EVAL, capFile + ".soup-invalid")))
+      push(`${task}-${tag}-capability`, "infbench bands", `${task} ${tag} (sampled)`,
+           n, `infbands/${task}_${tag}_capability.done`, capFile, `--tasks ${task}`);
+    const parFile = `infb_${task}_${tag}_parity.jsonl`;
+    if (fs.existsSync(path.join(EVAL, parFile)))  // only ran when sampled was 0.000
+      push(`${task}-${tag}-parity`, "infbench bands", `${task} ${tag} (greedy confirm)`,
+           n, `infbands/${task}_${tag}_parity.done`, parFile, null);
+  }
+  const bands2 = [["100-160k"], ["160-220k"], ["220-300k"], ["300-400k"], ["400-510k"]];
+  for (const [tag] of bands2) {
+    const file = `infb_infb_bookmc_${tag}_capability.jsonl`;
+    push(`bookmc-${tag}`, "infbench bands", `infb_bookmc ${tag} (true bands v2)`, 3,
+         `infbands/infb_bookmc_${tag}_capability.done`, file, "infb_bookmc");
+    if (fs.existsSync(path.join(EVAL, file + ".soup-invalid")))
+      W[W.length - 1].state = "invalid";
+  }
+  push("synth-384k", "synthetic >128k", "counting+cwe @384k (n=3)", 6,
+       "infbands/synth_384k.done", "synth_384k.jsonl", "--ctx 384000");
+  push("synth-512k", "synthetic >128k", "counting+cwe @512k (n=3)", 6,
+       "infbands/synth_512k.done", "synth_512k.jsonl", "--ctx 512000");
+  push("synth-512k-greedy", "synthetic >128k", "counting @512k greedy (n=3)", 3,
+       "infbands/synth_512k_greedy_counting.done", "synth_512k_greedy_counting.jsonl",
+       "--mode parity --ctx 512000");
+  push("ruler", "RULER", "RULER 4 tasks @128k-512k (n=3)", 48,
+       "ruler-gt128k.done", "ruler_gt128k.jsonl", "--plugin ruler");
+  push("enrich", "weak-axis enrich", "stock weak-axis n=5 (pre-goal, reused)", 20,
+       "stage4-stockweak5.done", "stock_weak5.jsonl", null);
+  push("greedy-confirm", "weak-axis enrich", "greedy confirm stock (reused)", 20,
+       "greedy-confirm-stock.done", "confirm_greedy_stock.jsonl", null);
+  push("greedy-confirm-qk43", "weak-axis enrich", "greedy confirm qk4.3 (reused)", 20,
+       "greedy-confirm-qk4.3.done", "confirm_greedy_qk4.3.jsonl", null);
+  const qk50n = countRows("confirm_greedy_qk5.0.jsonl");
+  W.push({ id: "greedy-confirm-qk50", group: "weak-axis enrich",
+           label: "greedy confirm qk5.0 — cancelled (redundant: verdict 3x-supported)",
+           total: 20, rows: qk50n, state: qk50n >= 20 ? "complete" : "cancelled" });
+
+  // queued chains: scripts in wait loops awaiting predecessors
+  const chains = [
+    ["ruler_gt128k.sh", "ruler (chained)", mk("synth-gt128k.done") ? "waiting GPU" : "armed"],
+    ["infb_bands2.sh", "bookmc true bands v2", mk("ruler-gt128k.done") ? "waiting GPU" : "armed"],
+    ["synth_gt128k.sh", "synthetic >128k", "running"],
+  ];
+  for (const [script, label, state] of chains) {
+    let alive = false;
+    try { alive = execSync("pgrep -f " + script, { timeout: 4000, encoding: "utf8" }).trim().length > 0; } catch {}
+    W.push({ id: "chain-" + script, group: "queues", label: script + " — " + label,
+             total: null, rows: null, state: alive ? state : "not running" });
+  }
+  res.json({ ts: new Date().toISOString(), workloads: W });
+});
+
 app.get("/api/infb", (req, res) => {
   /* InfBench honest-length bands (goal afe6584b): infb_infb_<task>_<band>_<mode>.jsonl
    * grouped by (task, band, mode) with true-token ranges from expected.ctx_tokens. */
