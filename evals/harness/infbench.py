@@ -30,6 +30,14 @@ TASKS = {
 }
 CACHE = os.path.join(os.path.dirname(__file__), "..", "..", "outputs", "eval",
                      "infbench_lengths.json")
+# v2 (2026-08-17): recalibration after the v1 cache was found to undercount tokens
+# ~3.4x (scrambling the length axis — "128k" cells served 143-266k prompts).
+# Preferred when present; a chars/token sanity assert guards both.
+CACHE_V2 = CACHE.replace(".json", "_v2.json")
+# Optional honest-length band override for stratified runs (goal afe6584b):
+#   INF_MIN_TOK / INF_MAX_TOK restrict the instance pool to a true-token band.
+BAND_MIN = int(os.environ.get("INF_MIN_TOK", "0"))
+BAND_MAX = int(os.environ.get("INF_MAX_TOK", "0")) or 10 ** 9
 _cache = {}
 
 
@@ -60,20 +68,46 @@ def measure_lengths(tokenizer):
     return lengths
 
 
+def _load_lengths():
+    """v2 (true Glimmer tokenization) if present, else v1; with chars/token sanity
+    assert (English ~3.5-5.5) so a corrupt cache can never scramble lengths silently."""
+    d = ensure_data()
+    if "lengths" in d:
+        return d["lengths"]
+    for path in (CACHE_V2, CACHE):
+        if os.path.exists(path):
+            L = json.load(open(path))
+            for t, items in d["data"].items():
+                for inst in items[:20]:
+                    n = L[str(inst["id"])]
+                    ratio = len(inst["context"]) / max(n, 1)
+                    assert 3.0 <= ratio <= 6.5, \
+                        f"lengths cache {path} fails chars/token sanity " \
+                        f"(id {inst['id']}: {ratio:.1f}) — recalibrate (see " \
+                        f"scripts/infb_forensics.py + goal notes)"
+            _cache["lengths"] = L
+            return L
+    raise SystemExit("no infbench lengths cache — run: python3 evals/harness/infbench.py calibrate")
+
+
 def _builder(task):
     def build(rng, target_tokens, depth):
         d = ensure_data()
-        assert "lengths" in d, "run: python3 evals/harness/infbench.py calibrate"
+        L = _load_lengths()
         items = d["data"][task]
-        fits = [x for x in items if d["lengths"][str(x["id"])] <= 0.92 * target_tokens]
-        pool = [x for x in fits if d["lengths"][str(x["id"])] >= 0.5 * target_tokens] or fits
-        assert pool, f"no {task} instance fits target {target_tokens}"
+        if BAND_MIN or BAND_MAX < 10 ** 9:      # honest-length strata (goal afe6584b)
+            pool = [x for x in items if BAND_MIN <= L[str(x["id"])] < BAND_MAX]
+            assert pool, f"no {task} instance in band [{BAND_MIN},{BAND_MAX})"
+        else:
+            fits = [x for x in items if L[str(x["id"])] <= 0.92 * target_tokens]
+            pool = [x for x in fits if L[str(x["id"])] >= 0.5 * target_tokens] or fits
+            assert pool, f"no {task} instance fits target {target_tokens}"
         inst = pool[rng.randrange(len(pool))]
         prompt = f"{inst['context']}\n\n{inst['input']}"
         if task == "infb_bookmc":
             prompt += ("\n\nAnswer by repeating the full text of the correct option.")
         meta = {"gold": [str(a) for a in inst["answer"]],
-                "id": inst["id"], "ctx_tokens": d["lengths"][str(inst["id"])],
+                "id": inst["id"], "ctx_tokens": L[str(inst["id"])],
                 "depth_ignored": True}
         if task == "infb_bookmc":
             meta["options"] = inst.get("options", [])

@@ -75,6 +75,8 @@ const GRIDS = [
   { name: "LongBench v2", file: "suite_longbench_v2.jsonl", total: 12 },   // 4 ctx × depth 0.5 × 3 reps (suite_lane/suite_queue spec)
   { name: "LongCodeQA", file: "suite_longcodeqa.jsonl", total: 15 },       // 5 ctx × depth 0.5 × 3 reps
   { name: "InfBench", file: "suite_infbench.jsonl", total: 18 },           // 3 tasks × 2 ctx × depth 0.5 × 3 reps
+  { name: "infb codedebug 160-200k (true)", file: "infb_infb_codedebug_170-200k_capability.jsonl", total: 3 },
+  { name: "infb bookmc bands (true)", file: "infb_infb_bookmc_400-500k_capability.jsonl", total: 3 },
   { name: "synth3 fill-in", file: "suite_synth3.jsonl", total: 189 },
   { name: "agentmem", file: "suite_agentmem.jsonl", total: 72 },         // 6 ctx × 4 depths × 3 reps (stage3 spec)
   { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 177 },     // 6×3×3×3 grid + corroborators: nolima 6, LQA 3, niah_multi 6 (audit F-5.2)
