@@ -93,6 +93,10 @@ async function refresh() {
   try { S = await (await fetch("/api/status")).json(); } catch (e) {
     $("ts").textContent = "server unreachable: " + e; return;
   }
+  try { S.workloads = (await (await fetch("/api/workloads")).json()).workloads; }
+  catch { S.workloads = null; }
+  try { S.infb = await (await fetch("/api/infb")).json(); }
+  catch { S.infb = null; }
   $("ts").textContent = "updated " + new Date(S.ts).toLocaleString() +
     (S.docker.vllm_up ? " · vLLM up" : " · vLLM down");
 
