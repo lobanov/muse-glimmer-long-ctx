@@ -372,3 +372,19 @@ at 256k, making it a genuine weak axis for criterion 7; (c) depth-averaged doc t
   Approval brief: §4 negative (training carries criterion 7 alone) + corpus math
   (174 rows @131k ≈ 21 optimizer steps at mb1×accum8; winner-detection floor ~+57pt).
 - stage7–9 armed behind train1.
+
+### Erratum (2026-08-17, goal afe6584b) — InfBench ">128k cliff" was a length-cache artifact
+
+The suite-lane finding "infb_codedebug 0.667@128k→0.000@256k, infb_bookmc 0.33→0.00"
+(STATUS 11:20 entry, suite_infbench.jsonl) is **retracted as stated**: target_ctx did
+not control actual prompt length. `infbench_lengths.json` (v1) was keyed by bare
+dataset id — ids collide across the three ∞Bench subsets, so each task's calibration
+pass overwrote the others (final pass = kv's ~124k tables). True lengths (v3,
+task/id-keyed, sanity-asserted): the "128k" cells actually served 143k/223k/266k
+tokens, the "256k" cells 131k–163k. Re-attributed (infb_forensics.jsonl): bookmc is
+non-monotone in true length (difficulty-dominated, no cliff); codedebug 160–200k is
+0/9 across stock+arms (the one possibly-real zone — honest-length band runs in
+flight: 100–140k 2/3, 140–170k 0/3, 170–200k 0/3 so far). kv never varied length.
+docs/perf-gt128k-quantification.md is the authoritative write-up (regenerates from
+disk via scripts/perf_doc.py). Final-report §2 and deliverables #4 wording to be
+updated when bands complete.
