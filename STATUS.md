@@ -351,3 +351,24 @@ Implications: (a) the §4 pooled gate input is now 15/20 = 0.750 (arm needs 17/2
 (b) "cwe@256k clean 1.000" is no longer supportable — cwe has real depth-0.5 headroom
 at 256k, making it a genuine weak axis for criterion 7; (c) depth-averaged doc tables
 (phase3 report) are unaffected (they pool depths 0.0/0.5/1.0, n=9). Snapshot regenerated.
+
+## 2026-08-17 06:05 — §4 COMPLETE (negative); stage5 green; chain at train1 approval gate
+
+- **§4 verdict (all 3 arms, paired, evidence in docs/phase4-evidence.md)**: NO zero-training
+  rescue. qk4.3 pooled −5 pts (counting worse, cwe@256k +40 in isolation, p=0.5);
+  qk5.0 pooled −20 pts with dose-dependent counting harm (3.87→4.3→5.0 gives
+  4/5→2/5→0/5 @128k — qk sharpening actively destroys aggregation); yarn4 inert
+  (position is not the lever). Harm checks clean (niah 5/5 both arms). No 512k
+  extension triggered; no qk override → if train1 runs, it trains on STOCK knobs.
+- **Mechanism update**: attention-temperature hypothesis for aggregation fragility is
+  now WEAKENED (sharper attention ≠ better pooling; possibly worse). Training with
+  aggregation-targeted SFT (§7 corpus) is the remaining lever for criterion 7.
+- stage5: dev refresh + verify-env PASSED; trainer dry-run initially failed on two
+  real bugs — LORA_TARGET_RE missed the `model.` wrapper prefix (peft fullmatch) and
+  triton couldn't find libcuda (stale ldconfig cache vs compat/lib) — both fixed
+  (commit 06e8ae9; TRITON_LIBCUDA_PATH env in stage5/stage6 launches). Dry-run green:
+  forward+backward OK, 58.8M trainable / 208 modules. GPU free, training-ready.
+- stage6: G1 (dry-run OK) passed; blocked at `logs/train1.approved` as designed.
+  Approval brief: §4 negative (training carries criterion 7 alone) + corpus math
+  (174 rows @131k ≈ 21 optimizer steps at mb1×accum8; winner-detection floor ~+57pt).
+- stage7–9 armed behind train1.
