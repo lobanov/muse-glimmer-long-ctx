@@ -41,7 +41,7 @@ sleep 15
 
 log "running §7 trainer --dry-run (qlora, r32, all-scope)"
 progress_step 3 3 "trainer dry-run"
-DRY=$(docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+DRY=$(docker exec -e TRITON_LIBCUDA_PATH=/usr/lib/aarch64-linux-gnu "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 src/muse_longctx/train_qlora.py --mode qlora --lora-rank 32 --lora-scope all \
     --dry-run 2>&1 | tail -25")
 echo "$DRY" | tail -8 >> logs/stage5-queue.log

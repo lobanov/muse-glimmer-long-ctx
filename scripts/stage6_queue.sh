@@ -150,7 +150,7 @@ PY
 )
 [ -n "$OVERRIDE_JSON" ] && log "qk override: $OVERRIDE_JSON" || log "no qk override (stock knobs)"
 
-docker exec -d "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
+docker exec -d -e TRITON_LIBCUDA_PATH=/usr/lib/aarch64-linux-gnu "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     python3 src/muse_longctx/train_qlora.py \
     --data outputs/corpus/train_v1/train.jsonl \
     --out outputs/adapters/run1 --mode qlora \

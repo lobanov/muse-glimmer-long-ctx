@@ -29,7 +29,9 @@ import re
 import torch
 from torch.utils.data import Dataset
 
-LORA_TARGET_RE = r"language_model\..*self_attn\.(q_proj|k_proj|v_proj|o_proj)"
+# module path may or may not carry the `model.` wrapper prefix depending on the
+# transformers VLM wrapping revision — tolerate both (refresh 2026-08-17 shifted it)
+LORA_TARGET_RE = r"(?:model\.)?language_model\..*self_attn\.(q_proj|k_proj|v_proj|o_proj)"
 EXPECTED_LORA_MODULES = 52 * 4  # layers × {q,k,v,o}
 
 
