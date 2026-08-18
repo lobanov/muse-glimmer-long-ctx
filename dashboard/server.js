@@ -76,6 +76,7 @@ const GRIDS = [
   { name: "LongCodeQA", file: "suite_longcodeqa.jsonl", total: 15 },       // 5 ctx × depth 0.5 × 3 reps
   { name: "InfBench", file: "suite_infbench.jsonl", total: 18 },           // 3 tasks × 2 ctx × depth 0.5 × 3 reps
   { name: "RULER 128-512k (stock)", file: "ruler_gt128k.jsonl", total: 48 },
+  { name: "MRCR v2 (stock)", file: "mrcr_gt128k.jsonl", total: 12 },
   { name: "synth3 fill-in", file: "suite_synth3.jsonl", total: 189 },
   { name: "agentmem", file: "suite_agentmem.jsonl", total: 72 },         // 6 ctx × 4 depths × 3 reps (stage3 spec)
   { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 177 },     // 6×3×3×3 grid + corroborators: nolima 6, LQA 3, niah_multi 6 (audit F-5.2)
@@ -287,6 +288,8 @@ app.get("/api/workloads", (req, res) => {
        "--mode parity --ctx 512000");
   push("ruler", "RULER", "RULER 4 tasks @128k-512k (n=3)", 48,
        "ruler-gt128k.done", "ruler_gt128k.jsonl", "--plugin ruler");
+  push("mrcr", "MRCR v2", "MRCR mrcr2/mrcr4 @131k+262k (n=3, official data)", 12,
+       "mrcr-gt128k.done", "mrcr_gt128k.jsonl", "--plugin mrcr");
   push("enrich", "weak-axis enrich", "stock weak-axis n=5 (pre-goal, reused)", 20,
        "stage4-stockweak5.done", "stock_weak5.jsonl", null);
   push("greedy-confirm", "weak-axis enrich", "greedy confirm stock (reused)", 20,
@@ -302,6 +305,7 @@ app.get("/api/workloads", (req, res) => {
   const chains = [
     ["ruler_gt128k.sh", "ruler (chained)", mk("synth-gt128k.done") ? "waiting GPU" : "armed"],
     ["infb_bands2.sh", "bookmc true bands v2", mk("ruler-gt128k.done") ? "waiting GPU" : "armed"],
+    ["mrcr_gt128k.sh", "MRCR v2 lanes", mk("ruler-gt128k.done") ? "waiting GPU" : "armed"],
     ["synth_gt128k.sh", "synthetic >128k", "running"],
   ];
   for (const [script, label, state] of chains) {
