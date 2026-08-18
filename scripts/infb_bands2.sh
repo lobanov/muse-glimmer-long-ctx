@@ -11,7 +11,9 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 log() { echo "[$(date '+%F %T')] $*" >> logs/infbands2-queue.log; }
 
-while ! [ -f logs/ruler-gt128k.done ] && pgrep -f 'bash scripts/ruler_gt128k.sh' >/dev/null; do
+# GPU serialization (goal d56ed95d): fire only after ruler AND synth complete —
+# concurrent 512k-prompt lanes cause vLLM preemption storms; serial is safer.
+while [ ! -f logs/ruler-gt128k.done ] || [ ! -f logs/synth-gt128k.done ]; do
     sleep 300
 done
 log "== infb_bands2 start (pid $$); ruler done=$([ -f logs/ruler-gt128k.done ] && echo yes || echo NO) =="
