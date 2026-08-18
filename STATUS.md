@@ -388,3 +388,26 @@ flight: 100–140k 2/3, 140–170k 0/3, 170–200k 0/3 so far). kv never varied 
 docs/perf-gt128k-quantification.md is the authoritative write-up (regenerates from
 disk via scripts/perf_doc.py). Final-report §2 and deliverables #4 wording to be
 updated when bands complete.
+
+## 2026-08-18 22:50 — goal d56ed95d (RULER+MRCR): BLOCKED-STOP on GPU lanes (partial)
+
+Delivered: MRCR v2 plugin (official GCS dataset, Apache-2.0, eval-only; mrcr2/mrcr4,
+strict exact-match + lenient flags; selftest + harness-integration PASS, commit ddaa880);
+RULER plugin from yesterday stands (selftest PASS). Dashboard tracks both (workload
+ledger + grids + /api/workloads verified). Lane chain armed: ruler (48 cells) →
+mrcr (12 cells) ∥ synth_512k remainder ∥ bookmc true bands; all hardened after the
+error-row incident (orphans wrote 9 error rows with vLLM down at 19:46; markers were
+falsely satisfied by wc -l — lanes now count '"error": null' only; dashboard
+readJSONL/countRows exclude error rows; synth purged+re-chained; run_eval resume
+verified error-skipping; commit 8f1f149).
+BLOCKER: vLLM cold start OOM-killed 3× (exact ~5:00 after shard-load begins;
+State.OOMKilled=true). GPU holds: ~37 GiB by co-running autoresearch work + 80.3 GiB
+vLLM@0.66 budget > 121.69 unified; host RAM during load spikes below the 55.46 GiB
+shread. Temporary compose override at .devcontainer/docker-compose.override.yml
+(util 0.66, gitignored, REMOVE when GPU free; verified file untouched).
+Self-heal: ruler lane now starts+polls vLLM itself (up -d + 5-min poll), so the whole
+chain fires automatically when the co-running work releases memory. Fixed ruler↔synth
+wait deadlock (synth waits ruler-done; ruler now gates on server, not on synth).
+train1 approval gate untouched (stage6 watcher alive, blocked as designed).
+UNMET on goal: RULER 48 cells, MRCR 12 cells, synth_512k, bookmc bands, their doc
+rows — all pending GPU availability. Goal stays active (not complete).
