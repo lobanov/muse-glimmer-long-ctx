@@ -23,7 +23,7 @@ const readJSONL = (p) => {
   try {
     return fs.readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => {
       try { return JSON.parse(l); } catch { return null; }
-    }).filter(Boolean);
+    }).filter(Boolean).filter((r) => !r.error);  // error rows never count as progress
   } catch { return []; }
 };
 const tailFile = (p, n = 6) => {
@@ -242,7 +242,7 @@ app.get("/api/workloads", (req, res) => {
   const rowsMatch = (frag) => live.some((l) => l.includes(frag));
   const countRows = (f) => { try {
     return fs.readFileSync(path.join(EVAL, f), "utf8").trim().split("\n")
-      .filter(Boolean).length; } catch { return 0; } };
+      .filter((l) => l && !l.includes('"error": "')).length; } catch { return 0; } };
 
   const W = [];
   const push = (id, group, label, total, marker, file, liveFrag) => {

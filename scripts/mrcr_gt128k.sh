@@ -25,7 +25,7 @@ docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     --out $OUT --write-parquet" >> logs/mrcr-gt128k-grid.log 2>&1 \
     || log "WARN: mrcr grid partial"
 
-N=$(wc -l < "$OUT" 2>/dev/null || echo 0)
+N=$(grep -c '"error": null' "$OUT" 2>/dev/null || echo 0)
 if [ "$N" -ge 12 ]; then
     log "== mrcr complete: $N/12 rows =="
     echo "done $(date '+%F %T')" > logs/mrcr-gt128k.done

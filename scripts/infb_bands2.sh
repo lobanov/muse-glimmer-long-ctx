@@ -30,7 +30,7 @@ run_band() {  # run_band <task> <min> <max> <tag> [mode]
          --mode $mode --max-tokens 4096 --out $out" \
         >> logs/infbands/${task}_${tag}_${mode}.log 2>&1 \
         || log "WARN: $task $tag $mode grid partial"
-    local n; n=$(wc -l < "$out" 2>/dev/null || echo 0)
+    local n; n=$(grep -c '"error": null' "$out" 2>/dev/null || echo 0)
     if [ "$n" -ge 3 ]; then
         touch "$marker"; log "== $task $tag $mode: $n rows =="
     else

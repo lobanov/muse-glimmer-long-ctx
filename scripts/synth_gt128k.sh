@@ -8,7 +8,10 @@ cd "$ROOT"
 DEV=muse-glimmer-long-ctx-dev-1
 log() { echo "[$(date '+%F %T')] $*" >> logs/synth-gt128k.log; }
 
-while [ ! -f logs/infbands-queue.done ]; do sleep 300; done
+# GPU serialization: run after the ruler lane (which owns the server next)
+while ! [ -f logs/ruler-gt128k.done ] && pgrep -f 'bash scripts/ruler_gt128k.sh' >/dev/null; do
+    sleep 300
+done
 log "== synth_gt128k start (pid $$) =="
 
 run() {  # run <tag> <args...>
@@ -20,9 +23,10 @@ run() {  # run <tag> <args...>
         python3 evals/harness/run_eval.py --engine vllm --base-url http://vllm:8000/v1 \
         --config-label stock $* --out $out" >> logs/infbands/${tag}.log 2>&1 \
         || log "WARN: $tag partial"
-    local n; n=$(wc -l < "$out" 2>/dev/null || echo 0)
-    [ "$n" -ge 3 ] && touch "logs/infbands/${tag}.done" && log "== $tag: $n rows ==" \
-        || log "ERROR: $tag incomplete ($n/3)"
+    # valid rows only (error rows must never satisfy a marker — 2026-08-18 incident)
+    local n; n=$(grep -c '"error": null' "$out" 2>/dev/null || echo 0)
+    [ "$n" -ge 3 ] && touch "logs/infbands/${tag}.done" && log "== $tag: $n valid rows ==" \
+        || log "ERROR: $tag incomplete ($n/3 valid)"
 }
 
 run synth_384k "--tasks counting,cwe --ctx 384000 --depths 0.5 --reps 3 \

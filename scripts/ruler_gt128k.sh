@@ -22,7 +22,7 @@ docker exec "$DEV" bash -c "cd /workspaces/muse-glimmer-long-ctx && \
     --out $OUT --write-parquet" >> logs/ruler-gt128k-grid.log 2>&1 \
     || log "WARN: ruler grid partial"
 
-N=$(wc -l < "$OUT" 2>/dev/null || echo 0)
+N=$(grep -c '"error": null' "$OUT" 2>/dev/null || echo 0)
 if [ "$N" -ge 48 ]; then
     log "== ruler complete: $N/48 rows =="
     echo "done $(date '+%F %T')" > logs/ruler-gt128k.done
