@@ -23,18 +23,19 @@ import sys
 
 CACHE = os.path.join(os.path.dirname(__file__), "..", "..", "cache", "mrcr_v2")
 TASKS = ("mrcr2", "mrcr4")
-BUCKETS = [  # (lo, hi, filename) — files are near-pointwise at bucket max (~131k/262k/524k)
+BUCKETS = [  # (lo, hi, filename) — files are near-pointwise at bucket max (~131k/262k/524k);
+# upto_128K carries the full cumulative distribution (4.5k-131k) for short lanes
     (0, 131072, "mrcr_v2p1_{n}needle_in_(65536,131072)_dynamic_fewshot_text_style_fast.csv"),
     (131072, 262144, "mrcr_v2p1_{n}needle_in_(131072,262144)_dynamic_fewshot_text_style_fast.csv"),
     (262144, 10 ** 9, "mrcr_v2p1_{n}needle_in_(262144,524288)_dynamic_fewshot_text_style_fast.csv"),
 ]
+SHORT_BUCKET_FILE = "mrcr_v2p1_{n}needle_upto_128K_dynamic_fewshot_text_style_fast.csv"
 _cache = {}
 
 
 def _pool(task, target_tokens):
     """Band-filtered rows for (task, target); caches a compact pickle per band."""
     n = task[-1]
-    lo, hi, pat = next(b for b in BUCKETS if target_tokens <= b[1])
     band_lo, band_hi = int(0.85 * target_tokens), int(1.05 * target_tokens)
     key = f"{task}_{band_lo}_{band_hi}"
     if key in _cache:
@@ -44,7 +45,12 @@ def _pool(task, target_tokens):
         rows = pickle.load(open(pk, "rb"))
     else:
         csv.field_size_limit(10 ** 9)
-        path = os.path.join(CACHE, pat.format(n=n))
+        # short targets use the cumulative upto_128K distribution; long use pointwise
+        if target_tokens < 100000:
+            path = os.path.join(CACHE, SHORT_BUCKET_FILE.format(n=n))
+        else:
+            _, _, pat = next(b for b in BUCKETS if target_tokens <= b[1])
+            path = os.path.join(CACHE, pat.format(n=n))
         rows = []
         with open(path, newline="") as fh:
             for row in csv.DictReader(fh):

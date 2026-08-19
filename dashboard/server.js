@@ -77,6 +77,8 @@ const GRIDS = [
   { name: "InfBench", file: "suite_infbench.jsonl", total: 18 },           // 3 tasks × 2 ctx × depth 0.5 × 3 reps
   { name: "RULER 128-512k (stock)", file: "ruler_gt128k.jsonl", total: 48 },
   { name: "MRCR v2 (stock)", file: "mrcr_gt128k.jsonl", total: 12 },
+  { name: "RULER short 32-128k", file: "ruler_le128k.jsonl", total: 36 },
+  { name: "MRCR short 32-64k", file: "mrcr_le128k.jsonl", total: 12 },
   { name: "synth3 fill-in", file: "suite_synth3.jsonl", total: 189 },
   { name: "agentmem", file: "suite_agentmem.jsonl", total: 72 },         // 6 ctx × 4 depths × 3 reps (stage3 spec)
   { name: "run1 (§8 trained)", file: "run1_vllm.jsonl", total: 177 },     // 6×3×3×3 grid + corroborators: nolima 6, LQA 3, niah_multi 6 (audit F-5.2)
@@ -290,6 +292,10 @@ app.get("/api/workloads", (req, res) => {
        "ruler-gt128k.done", "ruler_gt128k.jsonl", "--plugin ruler");
   push("mrcr", "MRCR v2", "MRCR mrcr2/mrcr4 @131k+262k (n=3, official data)", 12,
        "mrcr-gt128k.done", "mrcr_gt128k.jsonl", "--plugin mrcr");
+  push("ruler-short", "short-context", "RULER 4 tasks @32k+64k+128k (n=3)", 36,
+       "short-ruler.done", "ruler_le128k.jsonl", "--plugin ruler --ctx 32000");
+  push("mrcr-short", "short-context", "MRCR mrcr2/mrcr4 @32k+64k (n=3; 128k reused @131k)", 12,
+       "short-mrcr.done", "mrcr_le128k.jsonl", "--plugin mrcr --ctx 32000");
   push("enrich", "weak-axis enrich", "stock weak-axis n=5 (pre-goal, reused)", 20,
        "stage4-stockweak5.done", "stock_weak5.jsonl", null);
   push("greedy-confirm", "weak-axis enrich", "greedy confirm stock (reused)", 20,
