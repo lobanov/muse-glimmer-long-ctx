@@ -43,13 +43,14 @@ _cache = {}
 
 
 def ensure_data():
+    # NOTE: never seed _cache["lengths"] here — the legacy v1 CACHE is id-collision
+    # soup (see _load_lengths); seeding it short-circuited v3 (bug found 2026-08-19:
+    # bookmc bands2 KeyError'd on infb_bookmc/0 because the plugin silently used v1).
     if "data" not in _cache:
         _cache["data"] = {t: [json.loads(l) for l in
                               open(hf_hub_download(DATASET, f[0], repo_type="dataset"))
                               if l.strip()]
                           for t, f in TASKS.items()}
-        if os.path.exists(CACHE):
-            _cache["lengths"] = json.load(open(CACHE))
     return _cache
 
 
@@ -78,6 +79,8 @@ def _load_lengths():
     if os.path.exists(CACHE_V3):
         L = json.load(open(CACHE_V3))
         for t, items in d["data"].items():
+            if t == "infb_kv":
+                continue  # UUID tables: ~1.6 chars/tok legitimately (not natural text)
             for inst in items[:20]:
                 n = L[f"{t}/{inst['id']}"]
                 ratio = len(inst["context"]) / max(n, 1)
