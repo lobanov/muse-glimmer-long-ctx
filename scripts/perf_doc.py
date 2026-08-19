@@ -148,6 +148,44 @@ def main():
             A(f"{f.replace('.jsonl','')} {t}: {hits:.0f}/{len(xs)} [{det}]")
     A("```")
     A("")
+    A("## 2e. Short-context reference curves (32k/64k/128k; goal 83d7bbb9)")
+    A("")
+    A("```")
+    rul = defaultdict(list)
+    for r in rows(f"{E}/ruler_le128k.jsonl"):
+        if not r.get("error"):
+            rul[(r["task"], r["target_ctx"])].append(r["score"])
+    A(f"{'task':<14}{'32k':>7}{'64k':>7}{'128k':>7}   | {'256k':>6}{'512k':>6} (from 2b)")
+    for t in sorted({k[0] for k in rul}):
+        short = "".join(f"{sum(rul.get((t, c), [])) / max(len(rul.get((t, c), [1])), 1):>7.2f}"
+                        if rul.get((t, c)) else "      —" for c in (32000, 64000, 128000))
+        rul2 = defaultdict(list)
+        for r in rows(f"{E}/ruler_gt128k.jsonl"):
+            if not r.get("error") and r["task"] == t:
+                rul2[r["target_ctx"]].append(r["score"])
+        lg = "".join(f"{sum(rul2.get(c, [])) / max(len(rul2.get(c, [1])), 1):>7.2f}"
+                     for c in (256000, 512000))
+        A(f"{t:<14}{short}   |{lg}")
+    A("```")
+    A("")
+    A("```")
+    mrc = defaultdict(list)
+    for r in rows(f"{E}/mrcr_le128k.jsonl"):
+        if not r.get("error"):
+            mrc[(r["task"], r["target_ctx"])].append(r["score"])
+    mrcg = defaultdict(list)
+    for r in rows(f"{E}/mrcr_gt128k.jsonl"):
+        if not r.get("error"):
+            mrcg[(r["task"], r["target_ctx"])].append(r["score"])
+    for t in sorted({k[0] for k in mrc}):
+        cells = []
+        for c in (32000, 64000, 131072, 262144):
+            src = mrc if c <= 64000 else mrcg
+            xs = src.get((t, c), [])
+            cells.append(f"{sum(xs)/len(xs):.2f}" if xs else "—")
+        A(f"{t:<8}" + "".join(f"{x:>8}" for x in cells) + "   (32k/64k/131k/262k)")
+    A("```")
+    A("")
     A("## 3. Reused grids at true lengths (stock, no new compute)")
     A("")
     # §3 >128k retrieval + counting by actual target ctx (synthetic tasks = honest lengths)
@@ -187,9 +225,13 @@ def main():
     A("  PERFECT (1.00) at every length through 512k — retrieval/chaining is not the")
     A("  failure mode. frequent-word-extraction (fwe) is the aggregation-family failure:")
     A("  0.30@128k -> 0.00 above — consistent with counting/cwe, NOT with retrieval.")
-    A("- **MRCR v2 (2c)**: mrcr2 0.67@131k -> 0.00@262k; mrcr4 0.33@131k -> 0.00@262k")
-    A("  (strict exact-match; n=3). Consistent with the aggregation-fragility axis")
-    A("  (reproduce-the-ith-instance requires counting under distractors).")
+    A("- **MRCR v2 (2c/2e)**: mrcr2 0.00@32k, 0.33@64k, 0.67@131k, 0.00@262k;")
+    A("  mrcr4 0.67@32k, 0.00@64k, 0.33@131k, 0.00@262k (strict; n=3, wide CIs).")
+    A("  Non-monotone at short lengths + zero at 262k: aggregation-fragility, not a")
+    A("  length cliff — reproducing the ith instance requires counting under distractors.")
+    A("- **RULER fwe short curve (2e)**: 0.50@32k, 0.30@64k, 0.27@128k, 0.00 ≥256k —")
+    A("  partial even at 32k (never solved cleanly), degrading with length; the other")
+    A("  three RULER families stay 1.00 everywhere. Same signature as counting/cwe.")
     A("- **Synthetic @384-512k (2d)**: counting 2/3 @384k, 1/3 @512k; cwe 1/3 both;")
     A("  greedy counting@512k 0/3 (all off-by-one undercounts) — sampling share small")
     A("  at the extreme; miss anatomy unchanged (enumeration-resistant).")

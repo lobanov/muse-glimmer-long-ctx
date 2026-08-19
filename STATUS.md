@@ -431,3 +431,21 @@ Node rebooted 23:44 (GPU contention resolved); stack re-armed in order (dev → 
 - 48 prior error rows on ruler (ran during vLLM crash-loop) superseded by clean run.
 Docs: perf-gt128k-quantification.md regenerated with §2b/2c/2d + verdicts (b8c8762).
 Chain: bands2 in flight; stage6-9 armed; train1 approval gate untouched.
+
+## 2026-08-19 12:45 — goal 83d7bbb9: short-context RULER+MRCR COMPLETE; chain resumed
+
+- bands2 finished: bookmc TRUE bands final — 0/3@129-143k, 1/3@200-202k, 2/3@223-279k,
+  1/3@336-382k, **3/3@453-486k** (+greedy 0/3 on the lowest band). Best score at the
+  LONGEST length: difficulty-dominated, no length cliff — the original "bookmc 0.33→0.00"
+  reading is fully retracted in favor of instance difficulty.
+- **RULER short (36/36)**: fwe 0.50@32k → 0.30@64k → 0.27@128k → 0.00 ≥256k (never
+  solved cleanly even at 32k); vt/niah_mk/niah_mv 1.00 everywhere (32k–512k).
+- **MRCR short (12/12, strict)**: mrcr2 0.00/0.33/0.67/0.00 at 32k/64k/131k/262k;
+  mrcr4 0.67/0.00/0.33/0.00 — non-monotone short, zero at 262k ⇒ aggregation
+  fragility, not a length cliff.
+- short-le128k lane bug fixed en route (`set -u` unbound `$4` in run_grid killed the
+  lane after the ruler grid with rows-on-disk-but-no-marker; removed dead line).
+- Dashboard restarted with short-lane wiring (complete 36/36 + 12/12 verified via
+  /api/workloads); perf doc §2e short-context curves + verdicts regenerated (disk-only).
+- Chain resumed: stage6-9 watchers alive, stage6 approval-gated (train1 NOT launched —
+  owner decision), vLLM serving stock-524k, dashboard up.

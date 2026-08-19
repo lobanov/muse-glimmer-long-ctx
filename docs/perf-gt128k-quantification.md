@@ -39,6 +39,12 @@ real. kv never varied length (fixed ~124k tables → flat 1.000 everywhere).
 
 ```
 task                 band       mode  n hits   ±95%  true-tok(range)        wall-median
+infb_bookmc      100-160k capability  3    0   0.00  129-143k     176s
+infb_bookmc      100-160k     parity  3    0   0.00  129-143k     184s
+infb_bookmc      160-220k capability  3    1   1.43  200-202k     258s
+infb_bookmc      220-300k capability  3    2   1.43  223-279k     356s
+infb_bookmc      300-400k capability  3    1   1.43  336-382k     614s
+infb_bookmc      400-510k capability  3    3   0.00  453-486k     845s
 infb_codedebug   100-140k capability  3    2   1.43  104-138k     244s
 infb_codedebug   140-170k capability  3    0   0.00  149-166k     363s
 infb_codedebug   140-170k     parity  3    0   0.00  149-166k     351s
@@ -73,6 +79,21 @@ synth_384k cwe: 1/3 [miss]
 synth_512k counting: 1/3 [exact]
 synth_512k cwe: 2/3 [hit]
 synth_512k_greedy_counting counting: 0/3 [got 8 want 11]
+```
+
+## 2e. Short-context reference curves (32k/64k/128k; goal 83d7bbb9)
+
+```
+task              32k    64k   128k   |   256k  512k (from 2b)
+ruler_fwe        0.50   0.30   0.27   |   0.00   0.00
+ruler_niah_mk    1.00   1.00   1.00   |   1.00   1.00
+ruler_niah_mv    1.00   1.00   1.00   |   1.00   1.00
+ruler_vt         1.00   1.00   1.00   |   1.00   1.00
+```
+
+```
+mrcr2       0.00    0.33    0.67    0.00   (32k/64k/131k/262k)
+mrcr4       0.67    0.00    0.33    0.00   (32k/64k/131k/262k)
 ```
 
 ## 3. Reused grids at true lengths (stock, no new compute)
@@ -110,9 +131,13 @@ niah         512k       520       522  9
   PERFECT (1.00) at every length through 512k — retrieval/chaining is not the
   failure mode. frequent-word-extraction (fwe) is the aggregation-family failure:
   0.30@128k -> 0.00 above — consistent with counting/cwe, NOT with retrieval.
-- **MRCR v2 (2c)**: mrcr2 0.67@131k -> 0.00@262k; mrcr4 0.33@131k -> 0.00@262k
-  (strict exact-match; n=3). Consistent with the aggregation-fragility axis
-  (reproduce-the-ith-instance requires counting under distractors).
+- **MRCR v2 (2c/2e)**: mrcr2 0.00@32k, 0.33@64k, 0.67@131k, 0.00@262k;
+  mrcr4 0.67@32k, 0.00@64k, 0.33@131k, 0.00@262k (strict; n=3, wide CIs).
+  Non-monotone at short lengths + zero at 262k: aggregation-fragility, not a
+  length cliff — reproducing the ith instance requires counting under distractors.
+- **RULER fwe short curve (2e)**: 0.50@32k, 0.30@64k, 0.27@128k, 0.00 ≥256k —
+  partial even at 32k (never solved cleanly), degrading with length; the other
+  three RULER families stay 1.00 everywhere. Same signature as counting/cwe.
 - **Synthetic @384-512k (2d)**: counting 2/3 @384k, 1/3 @512k; cwe 1/3 both;
   greedy counting@512k 0/3 (all off-by-one undercounts) — sampling share small
   at the extreme; miss anatomy unchanged (enumeration-resistant).
