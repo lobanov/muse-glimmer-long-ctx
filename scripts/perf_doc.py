@@ -106,6 +106,48 @@ def main():
           f"{t[0]//1000}-{t[-1]//1000}k".ljust(22) + f"{lat[len(lat)//2]:>8.0f}s")
     A("```")
     A("")
+    A("## 2b. RULER recipes @128k-512k (48 cells, n=3; goal d56ed95d)")
+    A("")
+    A("```")
+    rul = defaultdict(list)
+    for r in rows(f"{E}/ruler_gt128k.jsonl"):
+        if not r.get("error"):
+            rul[(r["task"], r["target_ctx"])].append(r["score"])
+    A(f"{'task':<14}{'128k':>7}{'256k':>7}{'384k':>7}{'512k':>7}")
+    for t in sorted({k[0] for k in rul}):
+        cells = [f"{sum(rul.get((t, c), [])) / max(len(rul.get((t, c), [1])), 1):.2f}"
+                 if rul.get((t, c)) else "—" for c in (128000, 256000, 384000, 512000)]
+        A(f"{t:<14}" + "".join(f"{x:>7}" for x in cells))
+    A("```")
+    A("")
+    A("## 2c. MRCR v2 official data (strict exact-match, n=3; goal d56ed95d)")
+    A("")
+    A("```")
+    mrc = defaultdict(list)
+    mrcd = defaultdict(lambda: defaultdict(int))
+    for r in rows(f"{E}/mrcr_gt128k.jsonl"):
+        if not r.get("error"):
+            mrc[(r["task"], r["target_ctx"])].append(r["score"])
+            mrcd[(r["task"], r["target_ctx"])][r.get("detail", "?")] += 1
+    for k in sorted(mrc):
+        m = sum(mrc[k]) / len(mrc[k])
+        A(f"{k[0]}@{k[1]//1000}k: {m:.2f}  ({dict(mrcd[k])})")
+    A("```")
+    A("")
+    A("## 2d. Synthetic weak axes @384k/512k (n=3 sampled + greedy counting@512k)")
+    A("")
+    A("```")
+    for f in ("synth_384k.jsonl", "synth_512k.jsonl", "synth_512k_greedy_counting.jsonl"):
+        sy = defaultdict(list)
+        for r in rows(f"{E}/{f}"):
+            if not r.get("error"):
+                sy[r["task"]].append((r["score"], r.get("detail", "")))
+        for t, xs in sorted(sy.items()):
+            hits = sum(x[0] for x in xs)
+            det = xs[0][1][:24] if xs else ""
+            A(f"{f.replace('.jsonl','')} {t}: {hits:.0f}/{len(xs)} [{det}]")
+    A("```")
+    A("")
     A("## 3. Reused grids at true lengths (stock, no new compute)")
     A("")
     # §3 >128k retrieval + counting by actual target ctx (synthetic tasks = honest lengths)
@@ -141,6 +183,16 @@ def main():
     A("## 5. Verdicts (cliff / no-cliff, per axis)")
     A("")
     A("- **infb_bookmc**: no length cliff (non-monotone; difficulty-dominated).")
+    A("- **RULER (2b)**: variable-tracking, multi-key and multi-value needle tasks are")
+    A("  PERFECT (1.00) at every length through 512k — retrieval/chaining is not the")
+    A("  failure mode. frequent-word-extraction (fwe) is the aggregation-family failure:")
+    A("  0.30@128k -> 0.00 above — consistent with counting/cwe, NOT with retrieval.")
+    A("- **MRCR v2 (2c)**: mrcr2 0.67@131k -> 0.00@262k; mrcr4 0.33@131k -> 0.00@262k")
+    A("  (strict exact-match; n=3). Consistent with the aggregation-fragility axis")
+    A("  (reproduce-the-ith-instance requires counting under distractors).")
+    A("- **Synthetic @384-512k (2d)**: counting 2/3 @384k, 1/3 @512k; cwe 1/3 both;")
+    A("  greedy counting@512k 0/3 (all off-by-one undercounts) — sampling share small")
+    A("  at the extreme; miss anatomy unchanged (enumeration-resistant).")
     A("- **infb_codedebug**: see §2 band table + greedy confirmation — decided by data below.")
     A("- **infb_kv**: N/A (fixed-length tables; 1.000 wherever measured).")
     A("- **LQA**: no collapse through ~350k actual (see §3 table).")

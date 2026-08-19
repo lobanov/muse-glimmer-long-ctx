@@ -40,7 +40,39 @@ real. kv never varied length (fixed ~124k tables → flat 1.000 everywhere).
 ```
 task                 band       mode  n hits   ±95%  true-tok(range)        wall-median
 infb_codedebug   100-140k capability  3    2   1.43  104-138k     244s
-infb_codedebug   140-170k capability  2    0   0.00  149-166k     395s
+infb_codedebug   140-170k capability  3    0   0.00  149-166k     363s
+infb_codedebug   140-170k     parity  3    0   0.00  149-166k     351s
+infb_codedebug   170-200k capability  3    0   0.00  191-199k     495s
+infb_codedebug   170-200k     parity  3    0   0.00  191-199k     373s
+```
+
+## 2b. RULER recipes @128k-512k (48 cells, n=3; goal d56ed95d)
+
+```
+task             128k   256k   384k   512k
+ruler_fwe        0.30   0.00   0.00   0.00
+ruler_niah_mk    1.00   1.00   1.00   1.00
+ruler_niah_mv    1.00   1.00   1.00   1.00
+ruler_vt         1.00   1.00   1.00   1.00
+```
+
+## 2c. MRCR v2 official data (strict exact-match, n=3; goal d56ed95d)
+
+```
+mrcr2@131k: 0.67  ({'miss': 1, 'exact': 2})
+mrcr2@262k: 0.00  ({'miss': 3})
+mrcr4@131k: 0.33  ({'miss': 2, 'exact': 1})
+mrcr4@262k: 0.00  ({'partial-prefix (lenient-hit)': 1, 'miss': 2})
+```
+
+## 2d. Synthetic weak axes @384k/512k (n=3 sampled + greedy counting@512k)
+
+```
+synth_384k counting: 2/3 [exact]
+synth_384k cwe: 1/3 [miss]
+synth_512k counting: 1/3 [exact]
+synth_512k cwe: 2/3 [hit]
+synth_512k_greedy_counting counting: 0/3 [got 8 want 11]
 ```
 
 ## 3. Reused grids at true lengths (stock, no new compute)
@@ -74,6 +106,16 @@ niah         512k       520       522  9
 ## 5. Verdicts (cliff / no-cliff, per axis)
 
 - **infb_bookmc**: no length cliff (non-monotone; difficulty-dominated).
+- **RULER (2b)**: variable-tracking, multi-key and multi-value needle tasks are
+  PERFECT (1.00) at every length through 512k — retrieval/chaining is not the
+  failure mode. frequent-word-extraction (fwe) is the aggregation-family failure:
+  0.30@128k -> 0.00 above — consistent with counting/cwe, NOT with retrieval.
+- **MRCR v2 (2c)**: mrcr2 0.67@131k -> 0.00@262k; mrcr4 0.33@131k -> 0.00@262k
+  (strict exact-match; n=3). Consistent with the aggregation-fragility axis
+  (reproduce-the-ith-instance requires counting under distractors).
+- **Synthetic @384-512k (2d)**: counting 2/3 @384k, 1/3 @512k; cwe 1/3 both;
+  greedy counting@512k 0/3 (all off-by-one undercounts) — sampling share small
+  at the extreme; miss anatomy unchanged (enumeration-resistant).
 - **infb_codedebug**: see §2 band table + greedy confirmation — decided by data below.
 - **infb_kv**: N/A (fixed-length tables; 1.000 wherever measured).
 - **LQA**: no collapse through ~350k actual (see §3 table).
