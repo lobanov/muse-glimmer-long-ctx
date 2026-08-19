@@ -411,3 +411,23 @@ wait deadlock (synth waits ruler-done; ruler now gates on server, not on synth).
 train1 approval gate untouched (stage6 watcher alive, blocked as designed).
 UNMET on goal: RULER 48 cells, MRCR 12 cells, synth_512k, bookmc bands, their doc
 rows — all pending GPU availability. Goal stays active (not complete).
+
+## 2026-08-19 09:00 — goal d56ed95d: RULER + MRCR lanes COMPLETE after node reboot
+
+Node rebooted 23:44 (GPU contention resolved); stack re-armed in order (dev → vLLM
+@0.66 override → all lanes/watchers → dashboard). Results (all on disk, docs regenerated):
+- **RULER 48/48** (`ruler_gt128k.jsonl`): vt/niah_mk/niah_mv **1.00 at every length
+  through 512k**; **fwe 0.30@128k → 0.00 ≥256k** (0/10 and 9/10 patterns) — the
+  aggregation-family failure again; retrieval/chaining perfect. Clean replication of
+  the §3/§4 picture on an independent benchmark family.
+- **MRCR v2 12/12** (official GCS data, strict exact-match): mrcr2 0.67@131k →
+  0.00@262k; mrcr4 0.33@131k → 0.00@262k. Aggregation-fragility axis again.
+- **synth 512k** complete: counting 1/3, cwe 2/3; greedy counting@512k 0/3 (all
+  off-by-one undercounts — enumeration-resistant core, minimal sampling share).
+- **infbench plugin bug #3 found+fixed** (`0a59bbf`): ensure_data seeded the v1
+  id-collision cache into _cache, silently short-circuiting v3 — bookmc bands2 had
+  been v1-soup again (KeyErrors on missing ids); sanity assert rescoped (kv UUID
+  tables are legitimately 1.6 chars/tok). bands2 re-running on true v3 selections.
+- 48 prior error rows on ruler (ran during vLLM crash-loop) superseded by clean run.
+Docs: perf-gt128k-quantification.md regenerated with §2b/2c/2d + verdicts (b8c8762).
+Chain: bands2 in flight; stage6-9 armed; train1 approval gate untouched.
