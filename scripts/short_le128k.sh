@@ -28,7 +28,6 @@ run_grid() {  # run_grid <tag> <marker> <args...>
         --config-label stock $* --out $out --write-parquet" >> logs/short-${tag}.log 2>&1 \
         || log "WARN: $tag partial"
     local n; n=$(grep -c '"error": null' "$out" 2>/dev/null || echo 0)
-    local want=$4  # reps arg position: ctx is 3rd from end... callers pass explicit below
     if [ "$n" -ge "$EXPECT" ]; then
         touch "$marker"; log "== $tag: $n valid rows =="
     else
