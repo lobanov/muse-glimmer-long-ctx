@@ -1,11 +1,18 @@
 # Muse Glimmer 30B — 512k Context Adaptation
 
-Make Muse Glimmer 30B **usefully** use a 512k-token context (4× its native 128k) as a
+**GOAL:** Make Muse Glimmer 30B **usefully** use a 512k-token context (4× its native 128k) as a
 ~17 GB K-Quant GGUF inside 32 GB VRAM, for long-horizon coding and agentic work.
 "Usefully" = measured, not nominal: strong retrieval across the whole window, multi-hop
 reasoning over distant evidence, repo-scale coding at 256k–512k, no material ≤128k
 regression, and materially better than stock at equal length. Train on the DGX Spark;
 deploy on an RTX 5090.
+
+**STATUS:** Some early success with RULER-inspired benchmarks of the *full-precision model*
+showing 100% performance on multi-hop chaining, multi-key and multi-value needles on contexts
+32k, 64k, 128k, 256k, 512k. Frequent word extraction is ~50% on 32k, ~30% on 128k, and collapses
+to 0 after that, but it seems to be the weakness of the model overall.
+
+It's reported that NVFP4 quant with force-extended context fails to load on vLLM with cutlass FP4 GEMM init error.
 
 ## Background
 
